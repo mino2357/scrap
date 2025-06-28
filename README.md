@@ -14,3 +14,8 @@ $$
 \frac{\partial e}{\partial t} + \frac{\partial}{\partial x} \left( \left( e + p \right) u \right) = 0.
 $$
 
+Equation of state.
+
+$$
+p = \left( \gamma - 1 \right) \left( e - \frac{1}{2}\rho u^2 \right).
+$$
