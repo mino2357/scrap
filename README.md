@@ -14,7 +14,7 @@ $$
 \frac{\partial e}{\partial t} + \frac{\partial}{\partial x} \left( \left( e + p \right) u \right) = 0.
 $$
 
-Equation of state.
+Equation of state. $\gamma$ is heat capacity ratio.
 
 $$
 p = \left( \gamma - 1 \right) \left( e - \frac{1}{2}\rho u^2 \right).
