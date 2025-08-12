@@ -136,15 +136,15 @@ $$
 
 流体：
 
-$$
+```math
 \frac{\partial \hat{T}_f}{\partial \hat{t}}+\frac{\partial \hat{T}_f}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_{Tf}}\frac{\partial^2 \hat{T}_f}{\partial \hat{x}^2} +H_f(\hat{T}_s-\hat{T}_f) +\gamma\,\mathrm{Da}\,\chi_f\,\mathrm{e}^{-\Theta/(1+\delta\hat{T}_s)}\,\hat{c}_A\hat{c}_B\,f_T(\hat{T}_s)
-$$
+```
 
 固体：
 
-$$
+```math
 \frac{\partial \hat{T}_s}{\partial \hat{t}} =\frac{1}{\mathrm{Pe}_{Ts}}\frac{\partial^2 \hat{T}_s}{\partial \hat{x}^2} +H_s(\hat{T}_f-\hat{T}_s) +(1-\gamma)\,\mathrm{Da}\,\chi_s\,\mathrm{e}^{-\Theta/(1+\delta\hat{T}_s)}\,\hat{c}_A\hat{c}_B\,f_T(\hat{T}_s)
-$$
+```
 
 ---
 
