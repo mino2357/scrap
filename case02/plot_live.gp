@@ -12,7 +12,7 @@ set key outside right
 DRAW = \
 "set multiplot layout 1,2 title 'Porous reactor';" \
 . "set xlabel 'x [m]'; set ylabel 'Concentration [mol/m^3]';" \
-. "plot 'conc.dat' using 1:2 w l t 'cA', '' using 1:3 w l t 'cB', '' using 1:4 w l t 'cC';" \
+. "plot 'conc.dat' using 1:2 w l t '[A]', '' using 1:3 w l t '[B]', '' using 1:4 w l t '[C]';" \
 . "set xlabel 'x [m]'; set ylabel 'Temperature [K]';" \
 . "plot 'temp.dat' using 1:2 w l t 'Tf', '' using 1:3 w l t 'Ts';" \
 . "unset multiplot;"

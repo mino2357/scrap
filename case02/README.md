@@ -33,6 +33,7 @@
 ---
 
 ### 化学種輸送式（流体相, $A$, $B$, $C$）
+
 $$
 \varepsilon \frac{\partial c_A}{\partial t} + u \frac{\partial c_A}{\partial x}
 = D_A \frac{\partial^2 c_A}{\partial x^2} - R_{\mathrm{vol}}
@@ -52,16 +53,19 @@ $$
 
 ### 反応速度
 **アレニウス式**と温度因子 $f_T(T_s)$ を使用：
+
 $$
 r_s(T_s, c_A, c_B) = k_0 \exp\left(-\frac{E_a}{R_g \, T_s}\right) \cdot c_A \cdot c_B \cdot f_T(T_s)
 $$
 
 **温度因子**（300K付近でS字型変化）：
+
 $$
 f_T(T) = \frac12 \left[ 1 + \frac{T - 300}{\sqrt{10000 + (T - 300)^2}} \right]
 $$
 
 **体積基準反応速度**：
+
 $$
 R_{\mathrm{vol}} = a_s \, r_s
 $$
@@ -71,6 +75,7 @@ $$
 ### エネルギー輸送式
 
 **流体相:**
+
 $$
 \varepsilon \rho_f C_{p,f} \left( \frac{\partial T_f}{\partial t} + u \frac{\partial T_f}{\partial x} \right)
 = \varepsilon k_f \frac{\partial^2 T_f}{\partial x^2}
@@ -79,6 +84,7 @@ $$
 $$
 
 **固体相:**
+
 $$
 (1-\varepsilon)\rho_s C_{p,s} \frac{\partial T_s}{\partial t}
 = (1-\varepsilon) k_s^{\mathrm{eff}} \frac{\partial^2 T_s}{\partial x^2}
@@ -87,6 +93,7 @@ $$
 $$
 
 ここで
+
 $$
 q_{rx} = a_s \, (-\Delta H) \, r_s \quad [\mathrm{W/m^3}]
 $$
