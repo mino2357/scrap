@@ -17,8 +17,8 @@ struct Params {
     // Species diffusion (effective)
     T DA = T(0), DB = T(0), DC = T(0);
 
-    // Thermal (simplified as k/(rho*Cp))
-    T kf = T(1.0), ks_eff = T(1.0);
+    // Thermal (conductivity k, not alpha)
+    T kf = T(1.0), ks_eff = T(1.0);     // W/(m*K)
     T rho_f = T(1.0), Cp_f = T(1.0);
     T rho_s = T(1.0), Cp_s = T(1.0);
     T h_sf = T(1.0); // W/(m^3 K)
@@ -62,13 +62,13 @@ inline T upwind_grad_posU(const std::vector<T>& q, T dx, int i) {
     return (i == 0) ? T(0) : (q[i] - q[i - 1]) / dx;
 }
 
-// Laplacian with one-sided Neumann(0) at both ends（ユーザー指定形）
+// Laplacian with one-sided Neumann(0) at both ends
 template<class T>
 inline T lap_central(const std::vector<T>& q, T dx, int i) {
     const int N = static_cast<int>(q.size());
-    if (i == 0)      return (q[1] - q[0]) / (dx * dx);
-    if (i == N - 1)  return (q[N - 2] - q[N - 1]) / (dx * dx);
-    return (q[i + 1] - 2 * q[i] + q[i - 1]) / (dx * dx);
+    if (i == 0)      return (T(2)*(q[1] - q[0])) / (dx * dx);
+    if (i == N - 1)  return (T(2)*(q[N - 2] - q[N - 1])) / (dx * dx);
+    return (q[i + 1] - T(2) * q[i] + q[i - 1]) / (dx * dx);
 }
 
 //-------------------- 初期化 --------------------
@@ -85,6 +85,7 @@ State<T> make_state(Params<T>& P,
 
     State<T> S;
     S.Nx = P.Nx;
+    assert(S.Nx >= 2);
     S.dx = P.L / T(P.Nx - 1);
     S.x.resize(P.Nx);
     S.cA.assign(P.Nx, cA0);
@@ -108,7 +109,7 @@ void compute_reaction(const Params<T>& P, const State<T>& S,
         const T cA = std::max(S.cA[i], T(0));
         const T cB = std::max(S.cB[i], T(0));
         const T fT = temp_factor(S.Ts[i]);
-        rs[i]   = kA * cA * cB * fT;  // mol/(m^2 s), alpha≡1
+        rs[i]   = kA * cA * cB * fT;  // mol/(m^2 s)
         Rvol[i] = P.a_s * rs[i];      // mol/(m^3 s)
     }
 }
@@ -152,6 +153,9 @@ void update_energy_explicit(const Params<T>& P, const State<T>& S,
     Ts_new = S.Ts;
     const T one = T(1);
 
+    const T fluid_cap = P.eps * P.rho_f * P.Cp_f;             // ε ρ_f Cp_f
+    const T solid_cap = (one - P.eps) * P.rho_s * P.Cp_s;      // (1-ε) ρ_s Cp_s
+
     for (int i = 0; i < N; ++i) {
         const T gTf = upwind_grad_posU(S.Tf, dx, i);
         const T lTf = lap_central(S.Tf, dx, i);
@@ -165,22 +169,19 @@ void update_energy_explicit(const Params<T>& P, const State<T>& S,
         const T q_rx_f = P.gamma_heat_to_fluid * q_rx_total;
         const T q_rx_s = (one - P.gamma_heat_to_fluid) * q_rx_total;
 
-        // 有効容量
-        const T fluid_denom = P.eps * P.rho_f * P.Cp_f;
-        const T solid_denom = (one - P.eps) * P.rho_s * P.Cp_s;
-
-        // 流体温度
+        // 流体温度：dTf/dt = - (u/ε) * ∂Tf/∂x + (k_f/(ε ρ_f Cp_f)) ∂^2Tf/∂x^2 + ...
         Tf_new[i] = S.Tf[i] + dt * (
-            -P.u * gTf + P.kf * lTf
-            + q_fs / fluid_denom
-            + q_rx_f / fluid_denom
+            -(P.u / P.eps) * gTf
+            + (P.kf / fluid_cap) * lTf
+            + q_fs / fluid_cap
+            + q_rx_f / fluid_cap
         );
 
-        // 固体温度
+        // 固体温度：dTs/dt = (k_s^eff/((1-ε) ρ_s Cp_s)) ∂^2Ts/∂x^2 + ...
         Ts_new[i] = S.Ts[i] + dt * (
-            P.ks_eff * lTs
-            - q_fs / solid_denom
-            + q_rx_s / solid_denom
+            (P.ks_eff / solid_cap) * lTs
+            - q_fs / solid_cap
+            + q_rx_s / solid_cap
         );
     }
 }
@@ -191,6 +192,7 @@ void apply_bc(const Params<T>& P,
               std::vector<T>& cA, std::vector<T>& cB, std::vector<T>& cC,
               std::vector<T>& Tf, std::vector<T>& Ts) {
     const int N = static_cast<int>(cA.size());
+    assert(N >= 2);
     // Inlet: Dirichlet（流体）、固体は断熱（Neumann0）
     cA[0] = P.cA_in; cB[0] = P.cB_in; cC[0] = P.cC_in; Tf[0] = P.Tf_in;
     Ts[0] = Ts[1]; // insulated
