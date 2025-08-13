@@ -128,15 +128,15 @@ H_s=\frac{a_s h_{sf}L}{(1-\varepsilon)\,\rho_s C_{p,s}\,u}.
 #### 種輸送
 
 ```math
-\frac{\partial \hat{c}_A}{\partial \hat{t}}+\frac{\partial \hat{c}_A}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_A}\frac{\partial^2 \hat{c}_A}{\partial \hat{x}^2} -\mathrm{Da}\,\mathrm{exp} (-\Theta/(1+\delta\hat{T}_s))\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
+\frac{\partial \hat{c}_A}{\partial \hat{t}}+\frac{\partial \hat{c}_A}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_A}\frac{\partial^2 \hat{c}_A}{\partial \hat{x}^2} -\mathrm{Da}\,\mathrm{exp} \left( -\frac{\Theta}{1+\delta\hat{T}_s} \right)\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
 ```
 
 ```math
-\frac{\partial \hat{c}_B}{\partial \hat{t}}+\frac{\partial \hat{c}_B}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_B}\frac{\partial^2 \hat{c}_B}{\partial \hat{x}^2} -\mathrm{Da}\,\mathrm{exp} (-\Theta/(1+\delta\hat{T}_s))\,\hat{c}_B\hat{c}_A\,f_T^*(\hat{T}_s)
+\frac{\partial \hat{c}_B}{\partial \hat{t}}+\frac{\partial \hat{c}_B}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_B}\frac{\partial^2 \hat{c}_B}{\partial \hat{x}^2} -\mathrm{Da}\,\mathrm{exp} \left( -\frac{\Theta}{1+\delta\hat{T}_s} \right)\,\hat{c}_B\hat{c}_A\,f_T^*(\hat{T}_s)
 ```
 
 ```math
-\frac{\partial \hat{c}_C}{\partial \hat{t}}+\frac{\partial \hat{c}_C}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_C}\frac{\partial^2 \hat{c}_C}{\partial \hat{x}^2} +\mathrm{Da}\,\mathrm{exp} (-\Theta/(1+\delta\hat{T}_s))\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
+\frac{\partial \hat{c}_C}{\partial \hat{t}}+\frac{\partial \hat{c}_C}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_C}\frac{\partial^2 \hat{c}_C}{\partial \hat{x}^2} +\mathrm{Da}\,\mathrm{exp} \left( -\frac{\Theta}{1+\delta\hat{T}_s} \right)\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
 ```
 
 #### エネルギー
@@ -144,13 +144,13 @@ H_s=\frac{a_s h_{sf}L}{(1-\varepsilon)\,\rho_s C_{p,s}\,u}.
 流体：
 
 ```math
-\frac{\partial \hat{T}_f}{\partial \hat{t}}+\frac{\partial \hat{T}_f}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_{Tf}}\frac{\partial^2 \hat{T}_f}{\partial \hat{x}^2} +H_f(\hat{T}_s-\hat{T}_f) +\gamma\,\mathrm{Da}\,\chi_f\,\mathrm{exp} (-\Theta/(1+\delta\hat{T}_s))\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
+\frac{\partial \hat{T}_f}{\partial \hat{t}}+\frac{\partial \hat{T}_f}{\partial \hat{x}} =\frac{1}{\mathrm{Pe}_{Tf}}\frac{\partial^2 \hat{T}_f}{\partial \hat{x}^2} +H_f(\hat{T}_s-\hat{T}_f) +\gamma\,\mathrm{Da}\,\chi_f\,\mathrm{exp} \left( -\frac{\Theta}{1+\delta\hat{T}_s} \right)\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
 ```
 
 固体：
 
 ```math
-\frac{\partial \hat{T}_s}{\partial \hat{t}} =\frac{1}{\mathrm{Pe}_{Ts}}\frac{\partial^2 \hat{T}_s}{\partial \hat{x}^2} +H_s(\hat{T}_f-\hat{T}_s) +(1-\gamma)\,\mathrm{Da}\,\chi_s\,\mathrm{exp} (-\Theta/(1+\delta\hat{T}_s))\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
+\frac{\partial \hat{T}_s}{\partial \hat{t}} =\frac{1}{\mathrm{Pe}_{Ts}}\frac{\partial^2 \hat{T}_s}{\partial \hat{x}^2} +H_s(\hat{T}_f-\hat{T}_s) +(1-\gamma)\,\mathrm{Da}\,\chi_s\,\mathrm{exp} \left( -\frac{\Theta}{1+\delta\hat{T}_s} \right)\,\hat{c}_A\hat{c}_B\,f_T^*(\hat{T}_s)
 ```
 
 ここで
