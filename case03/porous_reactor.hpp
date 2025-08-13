@@ -11,17 +11,20 @@ struct Params {
     int Nx = 101;  T L = T(1);
 
     // Flow / porous
-    T u = T(0.1);    // m/s (>0)
+    T u = T(0.1);    // m/s (>0), superficial (Darcy) velocity
     T eps = T(0.5);  // porosity
 
     // Species diffusion (effective)
-    T DA = T(0), DB = T(0), DC = T(0);
+    T DA = T(0), DB = T(0), DC = T(0); // m^2/s
 
-    // Thermal (conductivity k, not alpha)
+    // Thermal (conductivity k = lambda, not alpha)
+    // PDE uses: alpha = k / (rho * Cp); after dividing by capacities,
+    // coefficients become k/(eps*rho_f*Cp_f), k/((1-eps)*rho_s*Cp_s).
     T kf = T(1.0), ks_eff = T(1.0);     // W/(m*K)
     T rho_f = T(1.0), Cp_f = T(1.0);
     T rho_s = T(1.0), Cp_s = T(1.0);
-    T h_sf = T(1.0); // W/(m^3 K)
+    // Inter-phase heat transfer coefficient (surface based)
+    T h_sf = T(1.0); // W/(m^2*K)  <-- multiply by a_s inside the solver
 
     // Surface / reaction
     T a_s = T(1.0); // m^2/m^3
@@ -75,11 +78,11 @@ inline T lap_central(const std::vector<T>& q, T dx, int i) {
 // Params を参照で受け取り，入口条件を上書き可能にする
 template<class T>
 State<T> make_state(Params<T>& P,
-                    // 初期条件
-                    T cA0 = T(1), T cB0 = T(1), T cC0 = T(0),
-                    T Tf0 = T(300), T Ts0 = T(300),
-                    // 入口条件（Dirichlet）
-                    T cA_in = T(1), T cB_in = T(0.4), T cC_in = T(0), T Tf_in = T(300)) {
+    // 初期条件
+    T cA0 = T(1), T cB0 = T(1), T cC0 = T(0),
+    T Tf0 = T(300), T Ts0 = T(300),
+    // 入口条件（Dirichlet）
+    T cA_in = T(1), T cB_in = T(0.4), T cC_in = T(0), T Tf_in = T(300)) {
     // inlet BC を Params に反映
     P.cA_in = cA_in; P.cB_in = cB_in; P.cC_in = cC_in; P.Tf_in = Tf_in;
 
@@ -161,10 +164,10 @@ void update_energy_explicit(const Params<T>& P, const State<T>& S,
         const T lTf = lap_central(S.Tf, dx, i);
         const T lTs = lap_central(S.Ts, dx, i);
 
-        // 固⇔流の熱交換（+: 固体→流体）
-        const T q_fs = P.h_sf * (S.Ts[i] - S.Tf[i]); // W/m^3
+        // 固⇔流の熱交換（+: 固体→流体）: volumetric = a_s * h_sf * (Ts - Tf)
+        const T q_fs = P.a_s * P.h_sf * (S.Ts[i] - S.Tf[i]); // W/m^3
 
-        // 反応熱（総量）を分配
+        // 反応熱（総量）を分配（volumetric）
         const T q_rx_total = P.a_s * (-P.dH) * rs[i];      // W/m^3
         const T q_rx_f = P.gamma_heat_to_fluid * q_rx_total;
         const T q_rx_s = (one - P.gamma_heat_to_fluid) * q_rx_total;
