@@ -21,3 +21,7 @@ Equation of state. $\gamma$ is heat capacity ratio.
 $$
 p = \left( \gamma - 1 \right) \left( e - \frac{1}{2}\rho u^2 \right).
 $$
+
+For the standard Sod shock tube test, run `case01/main` and compare the
+numerical `solution.csv` against the analytic `exact.csv` using the
+`case01/sod_compare.gp` gnuplot script.
