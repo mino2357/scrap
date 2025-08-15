@@ -32,3 +32,7 @@
 *.app
 a.out
 main
+*.dat
+sim
+
+settings.json

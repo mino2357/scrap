@@ -272,6 +272,7 @@ int main(){
 
     std::cerr.setf(std::ios::scientific);
     std::cerr<<std::setprecision(6)<<"Finished t="<<t<<", steps="<<step<<", L1_rho="<<l1<<"\n";
+
     return 0;
 }
 
