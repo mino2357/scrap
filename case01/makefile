@@ -1,7 +1,7 @@
 CXX = /usr/bin/g++
 TARGET = main
-CXXFLAGS = -Wall -Wextra -O2 -march=native -mtune=native -std=c++2b
-LDFLAGS = -lstdc++
+CXXFLAGS = -Wall -Wextra -O2 -march=native -std=c++2b 
+LDLFLAGS = -lstdc++
 SRCS = main.cpp
 OBJS = $(SRCS:.cpp=.o)
 

@@ -7,9 +7,11 @@ $\rho\ \mathrm{(kg/m^3)}$ is fluid (gas) density, $u\ \mathrm{(m/s)}$ is velocit
 $$
 \frac{\partial \rho}{\partial t} + \frac{\partial (\rho u)}{\partial x} = 0,
 $$
+
 $$
 \frac{\partial}{\partial t} \left( \rho u \right) + \frac{\partial}{\partial x} \left( p + \rho u^2 \right) = 0,
 $$
+
 $$
 \frac{\partial e}{\partial t} + \frac{\partial}{\partial x} \left( \left( e + p \right) u \right) = 0.
 $$
