@@ -201,11 +201,12 @@ static T h_from_thermo(const ThermoData<T>& td, T Tgas){
 }
 
 template<typename T>
-static void compute_rates(const std::vector<Reaction<T>>& reactions, T Tgas,
-                          const std::vector<T>& c, std::vector<T>& dc){
+static void compute_rates_conc(const std::vector<Reaction<T>>& reactions, T Tgas,
+                               const std::vector<T>& c, std::vector<T>& dc){
+    const T Rcal = T(1.987); // cal/mol/K
     std::fill(dc.begin(), dc.end(), T(0));
     for(const auto& r: reactions){
-        T k = r.A * std::pow(Tgas, r.b) * std::exp(-r.E / Tgas);
+        T k = r.A * std::pow(Tgas, r.b) * std::exp(-r.E / (Rcal*Tgas));
         T rate = k;
         for(auto [i,nu]: r.react)
             rate *= std::pow(std::max(c[i], T(0)), nu);
@@ -216,38 +217,53 @@ static void compute_rates(const std::vector<Reaction<T>>& reactions, T Tgas,
     }
 }
 
+template<typename T>
+static void compute_rates(const std::vector<Reaction<T>>& reactions, T Tgas, T P,
+                          const std::vector<T>& X, std::vector<T>& omega){
+    const T R = T(8.314462618);
+    T Ctot = P/(R*Tgas);
+    T Ctot_c = Ctot/T(1e6); // mol/cm^3
+    std::vector<T> c(X.size());
+    for(size_t i=0;i<X.size();++i) c[i] = X[i]*Ctot_c;
+    compute_rates_conc(reactions, Tgas, c, omega);
+    for(size_t i=0;i<omega.size();++i) omega[i] *= T(1e6); // back to mol/m^3/s
+}
 // Evaluate species rates and temperature derivative.
 template<typename T>
 static void compute_rhs(const std::vector<Reaction<T>>& reactions,
                         const std::vector<ThermoData<T>>& thermo,
+                        T P,
                         const std::vector<T>& y,
                         std::vector<T>& dy){
     const size_t n = thermo.size();
-    std::vector<T> c(y.begin(), y.begin()+n);
-    std::vector<T> dc(n);
+    std::vector<T> X(y.begin(), y.begin()+n);
+    std::vector<T> omega(n);
     T Tgas = std::max(y[n], T(1));
-    compute_rates(reactions, Tgas, c, dc);
-    T cp_tot = T(0);
+    compute_rates(reactions, Tgas, P, X, omega);
+    const T R = T(8.314462618);
+    T Ctot = P/(R*Tgas);
+    T cp_mix = T(0);
     T enth_rate = T(0);
     for(size_t i=0;i<n;++i){
-        dy[i] = dc[i];
         T cp = cp_from_thermo(thermo[i], Tgas);
         T h  = h_from_thermo(thermo[i], Tgas);
-        cp_tot += cp*c[i];
-        enth_rate += h*dc[i];
+        cp_mix += X[i]*cp;
+        enth_rate += h*omega[i];
     }
-    dy[n] = (cp_tot>0)? -enth_rate/cp_tot : T(0);
+    dy[n] = (cp_mix>0)? -enth_rate/(Ctot*cp_mix) : T(0);
+    for(size_t i=0;i<n;++i)
+        dy[i] = omega[i]/Ctot + X[i]/Tgas * dy[n];
 }
 
 
 template<typename T>
 using Callback = std::function<void(T,const std::vector<T>&)>;
 template<typename T>
-using Integrator = void(*)(std::vector<T>&, T, T,
+using Integrator = void(*)(std::vector<T>&, T, T, T,
                           const std::vector<Reaction<T>>&, const std::vector<ThermoData<T>>&, Callback<T>);
 
 template<typename T>
-static void rk4(std::vector<T>& y, T t0, T t1,
+static void rk4(std::vector<T>& y, T t0, T t1, T P,
                 const std::vector<Reaction<T>>& reactions,
                 const std::vector<ThermoData<T>>& thermo,
                 Callback<T> cb){
@@ -257,16 +273,21 @@ static void rk4(std::vector<T>& y, T t0, T t1,
     std::vector<T> k1(m),k2(m),k3(m),k4(m),yt(m);
     while(t < t1){
         if(t + h > t1) h = t1 - t;
-        compute_rhs(reactions, thermo, y, k1);
+        compute_rhs(reactions, thermo, P, y, k1);
         for(size_t i=0;i<m;++i) yt[i] = y[i] + T(0.5)*h*k1[i];
-        compute_rhs(reactions, thermo, yt, k2);
+        compute_rhs(reactions, thermo, P, yt, k2);
         for(size_t i=0;i<m;++i) yt[i] = y[i] + T(0.5)*h*k2[i];
-        compute_rhs(reactions, thermo, yt, k3);
+        compute_rhs(reactions, thermo, P, yt, k3);
         for(size_t i=0;i<m;++i) yt[i] = y[i] + h*k3[i];
-        compute_rhs(reactions, thermo, yt, k4);
+        compute_rhs(reactions, thermo, P, yt, k4);
         for(size_t i=0;i<m;++i)
             y[i] += (h/T(6))*(k1[i] + T(2)*k2[i] + T(2)*k3[i] + k4[i]);
-        for(size_t i=0;i<m-1;++i) if(y[i] < T(0)) y[i] = T(0);
+        T sum = T(0);
+        for(size_t i=0;i<m-1;++i){
+            if(y[i] < T(0)) y[i] = T(0);
+            sum += y[i];
+        }
+        if(sum>0) for(size_t i=0;i<m-1;++i) y[i] /= sum;
         t += h;
         if(cb) cb(t, y);
     }
@@ -274,7 +295,7 @@ static void rk4(std::vector<T>& y, T t0, T t1,
 
 // Runge-Kutta-Fehlberg 4(5) with adaptive step size.
 template<typename T>
-static void rk45(std::vector<T>& y, T t0, T t1,
+static void rk45(std::vector<T>& y, T t0, T t1, T P,
                  const std::vector<Reaction<T>>& reactions,
                  const std::vector<ThermoData<T>>& thermo,
                  Callback<T> cb){
@@ -286,21 +307,21 @@ static void rk45(std::vector<T>& y, T t0, T t1,
     std::vector<T> k1(m),k2(m),k3(m),k4(m),k5(m),k6(m),yt(m),y4(m),y5(m),errv(m);
     while(t < t1){
         if(t + h > t1) h = t1 - t;
-        compute_rhs(reactions, thermo, y, k1);
+        compute_rhs(reactions, thermo, P, y, k1);
         for(size_t i=0;i<m;++i) yt[i] = y[i] + h*(T(1.0)/T(4.0))*k1[i];
-        compute_rhs(reactions, thermo, yt, k2);
+        compute_rhs(reactions, thermo, P, yt, k2);
         for(size_t i=0;i<m;++i) yt[i] = y[i] + h*(T(3.0)/T(32.0)*k1[i] + T(9.0)/T(32.0)*k2[i]);
-        compute_rhs(reactions, thermo, yt, k3);
+        compute_rhs(reactions, thermo, P, yt, k3);
         for(size_t i=0;i<m;++i)
             yt[i] = y[i] + h*(T(1932.0)/T(2197.0)*k1[i] - T(7200.0)/T(2197.0)*k2[i] + T(7296.0)/T(2197.0)*k3[i]);
-        compute_rhs(reactions, thermo, yt, k4);
+        compute_rhs(reactions, thermo, P, yt, k4);
         for(size_t i=0;i<m;++i)
             yt[i] = y[i] + h*(T(439.0)/T(216.0)*k1[i] - T(8.0)*k2[i] + T(3680.0)/T(513.0)*k3[i] - T(845.0)/T(4104.0)*k4[i]);
-        compute_rhs(reactions, thermo, yt, k5);
+        compute_rhs(reactions, thermo, P, yt, k5);
         for(size_t i=0;i<m;++i)
             yt[i] = y[i] + h*( -T(8.0)/T(27.0)*k1[i] + T(2.0)*k2[i] - T(3544.0)/T(2565.0)*k3[i]
                                + T(1859.0)/T(4104.0)*k4[i] - T(11.0)/T(40.0)*k5[i]);
-        compute_rhs(reactions, thermo, yt, k6);
+        compute_rhs(reactions, thermo, P, yt, k6);
 
         for(size_t i=0;i<m;++i){
             y4[i] = y[i] + h*( T(25.0)/T(216.0)*k1[i] + T(1408.0)/T(2565.0)*k3[i]
@@ -314,7 +335,12 @@ static void rk45(std::vector<T>& y, T t0, T t1,
         for(size_t i=0;i<m;++i) err = std::max(err, std::abs(errv[i]));
         if(err <= tol){
             y = y5;
-            for(size_t i=0;i<m-1;++i) if(y[i] < T(0)) y[i] = T(0);
+            T sum = T(0);
+            for(size_t i=0;i<m-1;++i){
+                if(y[i] < T(0)) y[i] = T(0);
+                sum += y[i];
+            }
+            if(sum>0) for(size_t i=0;i<m-1;++i) y[i] /= sum;
             t += h;
             if(cb) cb(t, y);
         }
@@ -326,7 +352,7 @@ static void rk45(std::vector<T>& y, T t0, T t1,
 
 // Runge-Kutta-Fehlberg 7(8) with adaptive step size.
 template<typename T>
-static void rk78(std::vector<T>& y, T t0, T t1,
+static void rk78(std::vector<T>& y, T t0, T t1, T P,
                  const std::vector<Reaction<T>>& reactions,
                  const std::vector<ThermoData<T>>& thermo,
                  Callback<T> cb){
@@ -359,13 +385,13 @@ static void rk78(std::vector<T>& y, T t0, T t1,
 
     while(t < t1){
         if(t + h > t1) h = t1 - t;
-        compute_rhs(reactions, thermo, y, k[0]);
+        compute_rhs(reactions, thermo, P, y, k[0]);
         for(int s=1; s<13; ++s){
             for(size_t i=0;i<m;++i){
                 yt[i] = y[i];
                 for(int j=0;j<s; ++j) yt[i] += h * a[s][j] * k[j][i];
             }
-            compute_rhs(reactions, thermo, yt, k[s]);
+            compute_rhs(reactions, thermo, P, yt, k[s]);
         }
         for(size_t i=0;i<m;++i){
             T sum_b = T(0), sum_e = T(0);
@@ -380,7 +406,12 @@ static void rk78(std::vector<T>& y, T t0, T t1,
         for(size_t i=0;i<m;++i) err = std::max(err, std::abs(errv[i]));
         if(err <= tol){
             y = y8;
-            for(size_t i=0;i<m-1;++i) if(y[i] < T(0)) y[i] = T(0);
+            T sum = T(0);
+            for(size_t i=0;i<m-1;++i){
+                if(y[i] < T(0)) y[i] = T(0);
+                sum += y[i];
+            }
+            if(sum>0) for(size_t i=0;i<m-1;++i) y[i] /= sum;
             t += h;
             if(cb) cb(t, y);
         }
@@ -406,21 +437,22 @@ int main(int argc, char** argv){
     }
 
     // Initial composition: H2 1, O2 1, N2 3.76
-    std::vector<T> c(species.size(), T(1e-8));
+    std::vector<T> X(species.size(), T(1e-8));
     auto set_init = [&](const std::string& name, T val){
         auto it = idx.find(name);
-        if(it!=idx.end()) c[it->second] = val;
+        if(it!=idx.end()) X[it->second] = val;
     };
     set_init("H2", T(1.0));
     set_init("O2", T(1.0));
     set_init("N2", T(3.76));
 
-    T c_sum = T(0);
-    for(T v : c) c_sum += v;
-    if(c_sum > T(0)) for(T& v : c) v /= c_sum;
+    T X_sum = T(0);
+    for(T v : X) X_sum += v;
+    if(X_sum > T(0)) for(T& v : X) v /= X_sum;
 
+    const T P = T(202650.0); // Pa
     T T0 = T(1000.0);
-    std::vector<T> y = c;
+    std::vector<T> y = X;
     y.push_back(T0);
 
     Integrator<T> integrator = rk4<T>;
@@ -442,7 +474,7 @@ int main(int argc, char** argv){
         }
     };
 
-    integrator(y, T(0), T(1e-3), reactions, thermo, cb);
+    integrator(y, T(0), T(1e-3), P, reactions, thermo, cb);
 
     const size_t n = species.size();
     std::ofstream ofs("case04.dat");
