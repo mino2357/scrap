@@ -169,6 +169,9 @@ static bool load_thermo(const std::string& fname,
         if(!std::getline(ifs,l2)) break;
         if(!std::getline(ifs,l3)) break;
         if(!std::getline(ifs,l4)) break;
+        if(l2.size()>=2) l2.erase(l2.size()-2);
+        if(l3.size()>=2) l3.erase(l3.size()-2);
+        if(l4.size()>=2) l4.erase(l4.size()-2);
         std::stringstream ss;
         ss<<l2<<" "<<l3<<" "<<l4;
         std::vector<T> coef; T val;
@@ -201,31 +204,62 @@ static T h_from_thermo(const ThermoData<T>& td, T Tgas){
 }
 
 template<typename T>
-static void compute_rates_conc(const std::vector<Reaction<T>>& reactions, T Tgas,
-                               const std::vector<T>& c, std::vector<T>& dc){
+static T s_from_thermo(const ThermoData<T>& td, T Tgas){
+    const T R = T(8.314462618);
+    const T* a = (Tgas>td.t_mid)? td.high : td.low;
+    T t=Tgas;
+    return R*(a[0]*std::log(t) + a[1]*t + a[2]*t*t/T(2) + a[3]*t*t*t/T(3) + a[4]*t*t*t*t/T(4) + a[6]);
+}
+
+template<typename T>
+static void compute_rates_conc(const std::vector<Reaction<T>>& reactions,
+                               const std::vector<ThermoData<T>>& thermo,
+                               T Tgas,
+                               const std::vector<T>& c,
+                               std::vector<T>& dc){
     const T Rcal = T(1.987); // cal/mol/K
+    const T R = T(8.314462618);
     std::fill(dc.begin(), dc.end(), T(0));
+    std::vector<T> g(thermo.size());
+    for(size_t i=0;i<thermo.size();++i){
+        T h = h_from_thermo(thermo[i], Tgas);
+        T s = s_from_thermo(thermo[i], Tgas);
+        g[i] = h - Tgas*s;
+    }
     for(const auto& r: reactions){
-        T k = r.A * std::pow(Tgas, r.b) * std::exp(-r.E / (Rcal*Tgas));
-        T rate = k;
-        for(auto [i,nu]: r.react)
-            rate *= std::pow(std::max(c[i], T(0)), nu);
-        for(auto [i,nu]: r.react)
-            dc[i] -= nu*rate;
-        for(auto [i,nu]: r.prod)
-            dc[i] += nu*rate;
+        T kf = r.A * std::pow(Tgas, r.b) * std::exp(-r.E / (Rcal*Tgas));
+        T conc_f = T(1), conc_r = T(1);
+        T delta_nu = T(0);
+        T dg = T(0);
+        for(auto [i,nu]: r.react){
+            conc_f *= std::pow(std::max(c[i], T(0)), nu);
+            delta_nu -= nu;
+            dg -= nu * g[i];
+        }
+        for(auto [i,nu]: r.prod){
+            conc_r *= std::pow(std::max(c[i], T(0)), nu);
+            delta_nu += nu;
+            dg += nu * g[i];
+        }
+        T Kc = std::exp(-dg/(R*Tgas)) * std::pow(R*Tgas*T(1e-6), delta_nu);
+        T kr = (Kc>0)? kf / Kc : T(0);
+        T rate = kf*conc_f - kr*conc_r;
+        for(auto [i,nu]: r.react) dc[i] -= nu*rate;
+        for(auto [i,nu]: r.prod)  dc[i] += nu*rate;
     }
 }
 
 template<typename T>
-static void compute_rates(const std::vector<Reaction<T>>& reactions, T Tgas, T P,
+static void compute_rates(const std::vector<Reaction<T>>& reactions,
+                          const std::vector<ThermoData<T>>& thermo,
+                          T Tgas, T P,
                           const std::vector<T>& X, std::vector<T>& omega){
     const T R = T(8.314462618);
     T Ctot = P/(R*Tgas);
     T Ctot_c = Ctot/T(1e6); // mol/cm^3
     std::vector<T> c(X.size());
     for(size_t i=0;i<X.size();++i) c[i] = X[i]*Ctot_c;
-    compute_rates_conc(reactions, Tgas, c, omega);
+    compute_rates_conc(reactions, thermo, Tgas, c, omega);
     for(size_t i=0;i<omega.size();++i) omega[i] *= T(1e6); // back to mol/m^3/s
 }
 // Evaluate species rates and temperature derivative.
@@ -239,7 +273,7 @@ static void compute_rhs(const std::vector<Reaction<T>>& reactions,
     std::vector<T> X(y.begin(), y.begin()+n);
     std::vector<T> omega(n);
     T Tgas = std::max(y[n], T(1));
-    compute_rates(reactions, Tgas, P, X, omega);
+    compute_rates(reactions, thermo, Tgas, P, X, omega);
     const T R = T(8.314462618);
     T Ctot = P/(R*Tgas);
     T cp_mix = T(0);

@@ -11,7 +11,7 @@ $(TARGET): $(SOURCES)
 	$(CXX) $(CXXFLAGS) $(SOURCES) -o $@
 
 run: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) rk78
 	gnuplot plot.gp
 
 clean:
