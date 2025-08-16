@@ -39,3 +39,6 @@ sim
 *.png
 
 settings.json
+
+# keep thermodynamic data
+!case04/therm.dat
