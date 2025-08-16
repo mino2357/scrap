@@ -228,7 +228,6 @@ static void compute_rates(const std::vector<Reaction<T>>& reactions, T Tgas, T P
     compute_rates_conc(reactions, Tgas, c, omega);
     for(size_t i=0;i<omega.size();++i) omega[i] *= T(1e6); // back to mol/m^3/s
 }
-
 // Evaluate species rates and temperature derivative.
 template<typename T>
 static void compute_rhs(const std::vector<Reaction<T>>& reactions,
