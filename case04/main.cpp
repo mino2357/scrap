@@ -65,28 +65,59 @@ static bool load_chemkin(const std::string& fname,
     while(std::getline(ifs,line)){
         line = trim(line);
         if(line.empty() || line[0]=='!') continue;
-        if(line=="SPECIES"){ sec=SPECIES; continue; }
-        if(line=="REACTIONS"){ sec=REACTIONS; continue; }
+
+        if(line.rfind("SPECIES",0)==0){
+            sec = SPECIES;
+            std::string rest = trim(line.substr(7));
+            if(!rest.empty()){
+                std::stringstream ss(rest);
+                std::string sp;
+                while(ss>>sp){
+                    if(idx.find(sp)==idx.end()){
+                        idx[sp]=species.size();
+                        species.push_back(sp);
+                    }
+                }
+            }
+            continue;
+        }
+        if(line.rfind("REACTIONS",0)==0){ sec=REACTIONS; continue; }
         if(line=="END"){ sec=NONE; continue; }
+
         if(sec==SPECIES){
             std::stringstream ss(line);
             std::string sp;
             while(ss>>sp){
-                idx[sp]=species.size();
-                species.push_back(sp);
+                if(idx.find(sp)==idx.end()){
+                    idx[sp]=species.size();
+                    species.push_back(sp);
+                }
             }
         } else if(sec==REACTIONS){
             if(line.find('=')==std::string::npos) continue;
-            if(line.find("LOW /")!=std::string::npos || line.find("TROE")!=std::string::npos) continue;
-            if(line=="DUP") continue;
+            std::string uline = line;
+            std::transform(uline.begin(), uline.end(), uline.begin(),
+                           [](unsigned char c){ return std::toupper(c); });
+            if(uline.rfind("LOW",0)==0 || uline.rfind("TROE",0)==0 ||
+               uline.rfind("HIGH",0)==0) continue;
+            if(uline.rfind("DUP",0)==0) continue;
             size_t excl = line.find('!');
             std::string nocmt = (excl==std::string::npos)? line : line.substr(0,excl);
             std::stringstream ss(nocmt);
             std::string expr; double A,b,E;
             if(!(ss>>expr>>A>>b>>E)) continue;
-            size_t eq = expr.find('=');
-            std::string lhs = expr.substr(0,eq);
-            std::string rhs = expr.substr(eq+1);
+            std::string lhs, rhs;
+            size_t pos;
+            if((pos = expr.find("<=>")) != std::string::npos){
+                lhs = expr.substr(0,pos);
+                rhs = expr.substr(pos+3);
+            } else if((pos = expr.find("=>")) != std::string::npos){
+                lhs = expr.substr(0,pos);
+                rhs = expr.substr(pos+2);
+            } else if((pos = expr.find('=')) != std::string::npos){
+                lhs = expr.substr(0,pos);
+                rhs = expr.substr(pos+1);
+            } else continue;
             Reaction r;
             r.react = parse_side(lhs, idx);
             r.prod  = parse_side(rhs, idx);
