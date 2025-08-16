@@ -78,6 +78,6 @@ and concentration scale $C_0`. Dimensionless groups include
 
 along with heat–exchange numbers $H_f$ and $H_s$ and nondimensional reaction
 heats $\chi_f$ and $\chi_s$. The dimensionless species and energy equations
-mirror those of case02 but in scaled variables $\hat{x},\hat{t},\hat{c}_i$ and
+mirror those of case02 but in scaled variables $\hat{x}$, $\hat{t}$, $\hat{c}_i$ and
 $\hat{T}_{f,s}$.
 

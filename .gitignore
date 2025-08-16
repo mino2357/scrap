@@ -35,4 +35,7 @@ main
 *.dat
 sim
 
+*.csv
+*.png
+
 settings.json
