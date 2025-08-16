@@ -49,6 +49,53 @@ parse_side(const std::string& side, const std::map<std::string,int>& idx){
     return res;
 }
 
+static bool load_chemkin(const std::string& fname,
+                         std::vector<std::string>& species,
+                         std::map<std::string,int>& idx,
+                         std::vector<Reaction>& reactions){
+    std::ifstream ifs(fname);
+    if(!ifs) return false;
+    species.clear();
+    idx.clear();
+    reactions.clear();
+    std::string line;
+    enum Section{NONE,SPECIES,REACTIONS};
+    Section sec=NONE;
+    while(std::getline(ifs,line)){
+        line = trim(line);
+        if(line.empty() || line[0]=='!') continue;
+        if(line=="SPECIES"){ sec=SPECIES; continue; }
+        if(line=="REACTIONS"){ sec=REACTIONS; continue; }
+        if(line=="END"){ sec=NONE; continue; }
+        if(sec==SPECIES){
+            std::stringstream ss(line);
+            std::string sp;
+            while(ss>>sp){
+                idx[sp]=species.size();
+                species.push_back(sp);
+            }
+        } else if(sec==REACTIONS){
+            if(line.find('=')==std::string::npos) continue;
+            if(line.find("LOW /")!=std::string::npos || line.find("TROE")!=std::string::npos) continue;
+            if(line=="DUP") continue;
+            size_t excl = line.find('!');
+            std::string nocmt = (excl==std::string::npos)? line : line.substr(0,excl);
+            std::stringstream ss(nocmt);
+            std::string expr; double A,b,E;
+            if(!(ss>>expr>>A>>b>>E)) continue;
+            size_t eq = expr.find('=');
+            std::string lhs = expr.substr(0,eq);
+            std::string rhs = expr.substr(eq+1);
+            Reaction r;
+            r.react = parse_side(lhs, idx);
+            r.prod  = parse_side(rhs, idx);
+            r.A=A; r.b=b; r.E=E;
+            reactions.push_back(r);
+        }
+    }
+    return true;
+}
+
 static void compute_rates(const std::vector<Reaction>& reactions, double T,
                           const std::vector<double>& c, std::vector<double>& dc){
     std::fill(dc.begin(), dc.end(), 0.0);
@@ -61,6 +108,22 @@ static void compute_rates(const std::vector<Reaction>& reactions, double T,
             dc[i] -= nu*rate;
         for(auto [i,nu]: r.prod)
             dc[i] += nu*rate;
+    }
+}
+
+using Integrator = void(*)(std::vector<double>&, double, double, double, const std::vector<Reaction>&);
+
+static void euler(std::vector<double>& y, double t0, double t1, double T,
+                  const std::vector<Reaction>& reactions){
+    double h = (t1 - t0) / 1000.0;
+    double t = t0;
+    std::vector<double> dy(y.size());
+    while(t < t1){
+        if(t + h > t1) h = t1 - t;
+        compute_rates(reactions, T, y, dy);
+        for(size_t i=0;i<y.size();++i) y[i] += h*dy[i];
+        for(auto& v : y) if(v < 0) v = 0;
+        t += h;
     }
 }
 
@@ -101,49 +164,13 @@ static void rk45(std::vector<double>& y, double t0, double t1, double T,
     }
 }
 
-int main(){
-    std::ifstream ifs("chem.inp");
-    if(!ifs){
-        std::cerr << "chem.inp not found\n";
-        return 1;
-    }
+int main(int argc, char** argv){
     std::vector<std::string> species;
     std::map<std::string,int> idx;
     std::vector<Reaction> reactions;
-    std::string line;
-    enum Section{NONE,SPECIES,REACTIONS};
-    Section sec=NONE;
-    while(std::getline(ifs,line)){
-        line = trim(line);
-        if(line.empty() || line[0]=='!') continue;
-        if(line=="SPECIES"){ sec=SPECIES; continue; }
-        if(line=="REACTIONS"){ sec=REACTIONS; continue; }
-        if(line=="END"){ sec=NONE; continue; }
-        if(sec==SPECIES){
-            std::stringstream ss(line);
-            std::string sp;
-            while(ss>>sp){
-                idx[sp]=species.size();
-                species.push_back(sp);
-            }
-        } else if(sec==REACTIONS){
-            if(line.find('=')==std::string::npos) continue;
-            if(line.find("LOW /")!=std::string::npos || line.find("TROE")!=std::string::npos) continue;
-            if(line=="DUP") continue;
-            size_t excl = line.find('!');
-            std::string nocmt = (excl==std::string::npos)? line : line.substr(0,excl);
-            std::stringstream ss(nocmt);
-            std::string expr; double A,b,E;
-            if(!(ss>>expr>>A>>b>>E)) continue;
-            size_t eq = expr.find('=');
-            std::string lhs = expr.substr(0,eq);
-            std::string rhs = expr.substr(eq+1);
-            Reaction r;
-            r.react = parse_side(lhs, idx);
-            r.prod  = parse_side(rhs, idx);
-            r.A=A; r.b=b; r.E=E;
-            reactions.push_back(r);
-        }
+    if(!load_chemkin("chem.inp", species, idx, reactions)){
+        std::cerr << "chem.inp not found\n";
+        return 1;
     }
 
     const double T = 1000.0;
@@ -155,7 +182,11 @@ int main(){
     set("O", 1e-8);
     set("OH", 1e-8);
 
-    rk45(c, 0.0, 1e-3, T, reactions);
+    Integrator integrator = rk45;
+    if(argc>1 && std::string(argv[1])=="euler")
+        integrator = euler;
+
+    integrator(c, 0.0, 1e-3, T, reactions);
 
     for(size_t i=0;i<species.size();++i)
         std::cout<<species[i]<<" "<<c[i]<<"\n";
