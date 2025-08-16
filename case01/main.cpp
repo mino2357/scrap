@@ -13,7 +13,7 @@ struct State { double rho, mom, E; };
 struct Prim  { double rho, u,   p; };
 
 struct Params {
-    int    N = 800; double xL = 0.0, xR = 1.0; double CFL = 0.5;
+    int    N = 100; double xL = 0.0, xR = 1.0; double CFL = 0.5;
     double t_end = 0.2; double gamma = 1.4; double p_floor = 1e-12, rho_floor = 1e-12;
     bool   use_muscl = true; bool output_every_step = false;
 };
@@ -190,7 +190,7 @@ int main(){
     Params P; const int ng=2; const int Ntot=P.N+2*ng; const double L=P.xR-P.xL; const double dx=L/P.N;
 
     std::vector<double> x(Ntot); for(int i=0;i<Ntot;++i) x[i]=P.xL+(i-ng+0.5)*dx;
-    std::vector<State> U(Ntot), U0(Ntot), RHS(Ntot); std::vector<Prim> W(Ntot);
+    std::vector<State> U(Ntot), RHS(Ntot); std::vector<Prim> W(Ntot);
     const int Nf=P.N+1; std::vector<Prim> WLf(Nf), WRf(Nf); std::vector<State> F(Nf);
 
     auto to_prim = [&](){ for(int i=0;i<Ntot;++i) W[i]=cons2prim(U[i],P.gamma,P.p_floor,P.rho_floor); };
@@ -209,16 +209,14 @@ int main(){
             S[i].u   = minmod(W[i].u   - W[i-1].u,   W[i+1].u   - W[i].u  );
             S[i].p   = minmod(W[i].p   - W[i-1].p,   W[i+1].p   - W[i].p  );
         }
-        for(int i=ng;i<ng+P.N;++i){ int f=i-ng; // face between i and i+1
-            const Prim WLc{ std::max(W[i].rho + 0.5*S[i].rho, P.rho_floor), W[i].u + 0.5*S[i].u, std::max(W[i].p + 0.5*S[i].p, P.p_floor) };
-            const Prim WRc{ std::max(W[i+1].rho - 0.5*S[i+1].rho, P.rho_floor), W[i+1].u - 0.5*S[i+1].u, std::max(W[i+1].p - 0.5*S[i+1].p, P.p_floor) };
-            WLf[f]=WLc; WRf[f]=WRc;
-        }
-        // also construct the last face at ng+P.N (right boundary)
-        {
-            int i = ng+P.N-1; int f = P.N; // last interior cell i and face f=P.N between i and i+1
-            const Prim WLc{ std::max(W[i].rho + 0.5*S[i].rho, P.rho_floor), W[i].u + 0.5*S[i].u, std::max(W[i].p + 0.5*S[i].p, P.p_floor) };
-            const Prim WRc{ std::max(W[i+1].rho - 0.5*S[i+1].rho, P.rho_floor), W[i+1].u - 0.5*S[i+1].u, std::max(W[i+1].p - 0.5*S[i+1].p, P.p_floor) };
+        for(int i=ng-1;i<ng+P.N;++i){
+            int f=i-(ng-1); // face between cell i and i+1
+            const Prim WLc{ std::max(W[i].rho + 0.5*S[i].rho, P.rho_floor),
+                           W[i].u + 0.5*S[i].u,
+                           std::max(W[i].p + 0.5*S[i].p, P.p_floor) };
+            const Prim WRc{ std::max(W[i+1].rho - 0.5*S[i+1].rho, P.rho_floor),
+                           W[i+1].u - 0.5*S[i+1].u,
+                           std::max(W[i+1].p - 0.5*S[i+1].p, P.p_floor) };
             WLf[f]=WLc; WRf[f]=WRc;
         }
     };
@@ -237,13 +235,42 @@ int main(){
     double t=0.0; int step=0;
     auto max_wave = [&](){ to_prim(); double amax=0.0; for(int i=ng;i<ng+P.N;++i) amax=std::max(amax, std::abs(W[i].u)+sound_speed(W[i],P.gamma)); return amax; };
 
-    while(t < P.t_end){ double amax=max_wave(); if(amax<=0.0) break; double dt=P.CFL*dx/amax; if(t+dt>P.t_end) dt=P.t_end-t;
-        U0=U; compute_rhs(); for(int i=ng;i<ng+P.N;++i){ U[i].rho=U0[i].rho+dt*RHS[i].rho; U[i].mom=U0[i].mom+dt*RHS[i].mom; U[i].E=U0[i].E+dt*RHS[i].E; }
-        compute_rhs(); for(int i=ng;i<ng+P.N;++i){ U[i].rho=0.5*(U0[i].rho+U[i].rho+dt*RHS[i].rho); U[i].mom=0.5*(U0[i].mom+U[i].mom+dt*RHS[i].mom); U[i].E=0.5*(U0[i].E+U[i].E+dt*RHS[i].E); }
+    while(t < P.t_end){
+        double amax = max_wave();
+        if(amax <= 0.0) break;
+        double dt = P.CFL * dx / amax;
+        if(t + dt > P.t_end) dt = P.t_end - t;
+
+        compute_rhs();
+        for(int i=ng; i<ng+P.N; ++i){
+            U[i].rho += dt * RHS[i].rho;
+            U[i].mom += dt * RHS[i].mom;
+            U[i].E   += dt * RHS[i].E;
+        }
+
         // simple positivity fix (limited): floor rho,p and re-sync E if needed
         to_prim();
-        for(int i=ng;i<ng+P.N;++i){ if(W[i].rho<P.rho_floor || W[i].p<P.p_floor){ W[i].rho=std::max(W[i].rho,P.rho_floor); W[i].p=std::max(W[i].p,P.p_floor); U[i]=prim2cons(W[i],P.gamma);} }
-        t+=dt; ++step; if(P.output_every_step){ char buf[64]; std::snprintf(buf,sizeof(buf),"solution_%06d.csv",step); dump(buf);} }
+        for(int i=ng;i<ng+P.N;++i){
+            if(W[i].rho < P.rho_floor){
+                W[i].rho = P.rho_floor;
+                W[i].u   = 0.0;
+                W[i].p   = P.p_floor;
+                U[i]     = prim2cons(W[i], P.gamma);
+            } else if(W[i].p < P.p_floor){
+                W[i].p = P.p_floor;
+                U[i]   = prim2cons(W[i], P.gamma);
+            }
+        }
+
+        t += dt;
+        ++step;
+        std::cout << "step " << step << ", t=" << t << std::endl;
+        if(P.output_every_step){
+            char buf[64];
+            std::snprintf(buf,sizeof(buf),"solution_%06d.csv",step);
+            dump(buf);
+        }
+    }
     dump("solution.csv");
 
     // compute exact Sod solution and L1 error in density
