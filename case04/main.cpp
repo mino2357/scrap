@@ -313,6 +313,13 @@ int main(int argc, char** argv){
     if(!species.empty()) c[0] = T(1.0);
     if(species.size() > 1) c[1] = T(0.5);
 
+    // Normalize initial composition to obtain mole fractions
+    T c_sum = T(0);
+    for(T v : c) c_sum += v;
+    if(c_sum > T(0)){
+        for(T& v : c) v /= c_sum;
+    }
+
     Integrator<T> integrator = rk45<T>;
     if(argc>1){
         std::string method = argv[1];
