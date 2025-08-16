@@ -12,6 +12,7 @@ $(TARGET): $(SOURCES)
 
 run: $(TARGET)
 	./$(TARGET)
+	gnuplot plot.gp
 
 clean:
 	rm -f $(TARGET)

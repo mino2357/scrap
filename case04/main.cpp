@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <functional>
 
 struct Reaction {
     std::vector<std::pair<int,double>> react;
@@ -112,10 +113,12 @@ static void compute_rates(const std::vector<Reaction>& reactions, double T,
 }
 
 
-using Integrator = void(*)(std::vector<double>&, double, double, double, const std::vector<Reaction>&);
+using Callback = std::function<void(double,const std::vector<double>&)>;
+using Integrator = void(*)(std::vector<double>&, double, double, double,
+                          const std::vector<Reaction>&, Callback);
 
 static void euler(std::vector<double>& y, double t0, double t1, double T,
-                  const std::vector<Reaction>& reactions){
+                  const std::vector<Reaction>& reactions, Callback cb){
     double h = (t1 - t0) / 1000.0;
     double t = t0;
     std::vector<double> dy(y.size());
@@ -125,11 +128,12 @@ static void euler(std::vector<double>& y, double t0, double t1, double T,
         for(size_t i=0;i<y.size();++i) y[i] += h*dy[i];
         for(auto& v : y) if(v < 0) v = 0;
         t += h;
+        if(cb) cb(t, y);
     }
 }
 
 static void rk45(std::vector<double>& y, double t0, double t1, double T,
-                 const std::vector<Reaction>& reactions){
+                 const std::vector<Reaction>& reactions, Callback cb){
     const double tol = 1e-8;
     double h = (t1 - t0) / 1000.0;
     double t = t0;
@@ -158,6 +162,7 @@ static void rk45(std::vector<double>& y, double t0, double t1, double T,
             y = y5;
             for(auto& v : y) if(v < 0) v = 0;
             t += h;
+            if(cb) cb(t, y);
         }
         double scale = (err==0.0 ? 2.0 : 0.9*std::pow(tol/err, 0.2));
         scale = std::min(5.0, std::max(0.2, scale));
@@ -183,7 +188,25 @@ int main(int argc, char** argv){
     if(argc>1 && std::string(argv[1])=="euler")
         integrator = euler;
 
-    integrator(c, 0.0, 1e-3, T, reactions);
+    std::vector<double> times{0.0};
+    std::vector<std::vector<double>> history{c};
+    auto cb = [&](double t,const std::vector<double>& y){
+        times.push_back(t);
+        history.push_back(y);
+    };
+
+    integrator(c, 0.0, 1e-3, T, reactions, cb);
+
+    std::ofstream ofs("case04.dat");
+    ofs << "time";
+    for(const auto& s : species) ofs << ' ' << s;
+    ofs << '\n';
+    for(size_t k=0;k<times.size();++k){
+        double sum=0; for(double v: history[k]) sum+=v;
+        ofs << times[k];
+        for(double v: history[k]) ofs << ' ' << (sum>0? v/sum : 0.0);
+        ofs << '\n';
+    }
 
     for(size_t i=0;i<species.size();++i)
         std::cout<<species[i]<<" "<<c[i]<<"\n";
