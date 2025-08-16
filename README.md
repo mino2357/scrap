@@ -81,3 +81,10 @@ heats $\chi_f$ and $\chi_s$. The dimensionless species and energy equations
 mirror those of case02 but in scaled variables $\hat{x}$, $\hat{t}$, $\hat{c}_i$ and
 $\hat{T}_{f,s}$.
 
+## Utilities
+
+The scripts `chemkin_to_md.py` and `chemkin_to_graph.py` help document CHEMKIN
+reaction mechanisms. The former renders the `REACTIONS` block in a Markdown
+list, while the latter builds a Graphviz graph of species connectivity. PNG
+output from `chemkin_to_graph.py` requires the Graphviz `dot` executable.
+
