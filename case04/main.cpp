@@ -111,6 +111,18 @@ static void compute_rates(const std::vector<Reaction>& reactions, double T,
     }
 }
 
+static void load_initial(const std::string& fname,
+                         const std::map<std::string,int>& idx,
+                         std::vector<double>& c){
+    std::ifstream ifs(fname);
+    if(!ifs) return;
+    std::string name; double val;
+    while(ifs >> name >> val){
+        auto it = idx.find(name);
+        if(it != idx.end()) c[it->second] = val;
+    }
+}
+
 using Integrator = void(*)(std::vector<double>&, double, double, double, const std::vector<Reaction>&);
 
 static void euler(std::vector<double>& y, double t0, double t1, double T,
@@ -175,12 +187,7 @@ int main(int argc, char** argv){
 
     const double T = 1000.0;
     std::vector<double> c(species.size(),0.0);
-    auto set = [&](const std::string& s,double val){ auto it=idx.find(s); if(it!=idx.end()) c[it->second]=val; };
-    set("H2", 1.0);
-    set("O2", 0.5);
-    set("H", 1e-8);
-    set("O", 1e-8);
-    set("OH", 1e-8);
+    load_initial("init.inp", idx, c);
 
     Integrator integrator = rk45;
     if(argc>1 && std::string(argv[1])=="euler")
