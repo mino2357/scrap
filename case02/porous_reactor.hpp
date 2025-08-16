@@ -62,9 +62,9 @@ inline T upwind_grad_posU(const std::vector<T>& q, T dx, int i) {
 template<class T>
 inline T lap_central(const std::vector<T>& q, T dx, int i) {
     const int N = static_cast<int>(q.size());
-    if (i == 0)      return (q[1] - q[0]) / (dx * dx);
-    if (i == N - 1)  return (q[N - 2] - q[N - 1]) / (dx * dx);
-    return (q[i + 1] - 2 * q[i] + q[i - 1]) / (dx * dx);
+    if (i == 0)      return (T(2) * (q[1] - q[0])) / (dx * dx);
+    if (i == N - 1)  return (T(2) * (q[N - 2] - q[N - 1])) / (dx * dx);
+    return (q[i + 1] - T(2) * q[i] + q[i - 1]) / (dx * dx);
 }
 
 //-------------------- Initialization --------------------
@@ -130,6 +130,7 @@ void update_species_explicit(const Params<T>& P, const State<T>& S,
     cA_new = S.cA;
     cB_new = S.cB;
     cC_new = S.cC;
+    const T inv_eps = T(1) / P.eps;
     for (int i = 0; i < N; ++i) {
         const T gcA = upwind_grad_posU(S.cA, dx, i);
         const T gcB = upwind_grad_posU(S.cB, dx, i);
@@ -137,8 +138,6 @@ void update_species_explicit(const Params<T>& P, const State<T>& S,
         const T lcA = lap_central(S.cA, dx, i);
         const T lcB = lap_central(S.cB, dx, i);
         const T lcC = lap_central(S.cC, dx, i);
-
-        const T inv_eps = T(1) / P.eps;
         cA_new[i] = S.cA[i] + dt * (-(P.u * inv_eps) * gcA + (P.DA * inv_eps) * lcA - inv_eps * Rvol[i]);
         cB_new[i] = S.cB[i] + dt * (-(P.u * inv_eps) * gcB + (P.DB * inv_eps) * lcB - inv_eps * Rvol[i]);
         cC_new[i] = S.cC[i] + dt * (-(P.u * inv_eps) * gcC + (P.DC * inv_eps) * lcC + inv_eps * Rvol[i]);
@@ -155,6 +154,8 @@ void update_energy_explicit(const Params<T>& P, const State<T>& S,
     Tf_new = S.Tf;
     Ts_new = S.Ts;
     const T one = T(1);
+    const T fluid_denom = P.eps * P.rho_f * P.Cp_f;
+    const T solid_denom = (one - P.eps) * P.rho_s * P.Cp_s;
 
     for (int i = 0; i < N; ++i) {
         const T gTf = upwind_grad_posU(S.Tf, dx, i);
@@ -170,10 +171,6 @@ void update_energy_explicit(const Params<T>& P, const State<T>& S,
         // 流体・固体への分配
         const T q_rx_f = P.gamma_heat_to_fluid * q_rx_total;
         const T q_rx_s = (one - P.gamma_heat_to_fluid) * q_rx_total;
-
-        // 質量・比熱による係数
-        const T fluid_denom = P.eps * P.rho_f * P.Cp_f;
-        const T solid_denom = (one - P.eps) * P.rho_s * P.Cp_s;
 
         // 流体温度更新
         Tf_new[i] = S.Tf[i] + dt * (
