@@ -1,3 +1,4 @@
+//-----------------------------------------------
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -5,7 +6,60 @@
 #include <cstdio>   // std::rename
 #include "porous_reactor.hpp"
 
-int main(){
+// スナップショット（濃度・温度）を conc.dat / temp.dat に保存
+template<class T>
+static void dump_snapshot(const State<T>& S) {
+    // concentration
+    {
+        std::ofstream ofs("conc.tmp", std::ios::binary);
+        ofs << std::fixed << std::setprecision(15);
+        for (int i = 0; i < S.Nx; ++i)
+            ofs << S.x[i]  << ' ' << S.cA[i] << ' ' << S.cB[i] << ' ' << S.cC[i] << '\n';
+        ofs.flush();
+        ofs.close();
+        std::rename("conc.tmp", "conc.dat");
+    }
+    // temperature
+    {
+        std::ofstream ofs("temp.tmp", std::ios::binary);
+        ofs << std::fixed << std::setprecision(15);
+        for (int i = 0; i < S.Nx; ++i)
+            ofs << S.x[i]  << ' ' << S.Tf[i] << ' ' << S.Ts[i] << '\n';
+        ofs.flush();
+        ofs.close();
+        std::rename("temp.tmp", "temp.dat");
+    }
+}
+
+// 最終結果をファイルに保存（列: x cA cB cC Tf Ts）
+template<class T>
+static void save_result(const char* fname, const State<T>& S) {
+    std::ofstream ofs(fname, std::ios::binary);
+    ofs << std::fixed << std::setprecision(15);
+    for (int i = 0; i < S.Nx; ++i)
+        ofs << S.x[i]  << ' '
+            << S.cA[i] << ' '
+            << S.cB[i] << ' '
+            << S.cC[i] << ' '
+            << S.Tf[i] << ' '
+            << S.Ts[i] << '\n';
+}
+
+// 1ステップ進める（反応→輸送→境界条件→コミット）
+template<class T>
+static void advance(const Params<T>& P, State<T>& S, T dt,
+                    std::vector<T>& rs, std::vector<T>& Rvol,
+                    std::vector<T>& cA_new, std::vector<T>& cB_new, std::vector<T>& cC_new,
+                    std::vector<T>& Tf_new, std::vector<T>& Ts_new) {
+    compute_reaction(P, S, rs, Rvol);
+    update_species_explicit(P, S, Rvol, dt, cA_new, cB_new, cC_new);
+    update_energy_explicit (P, S, rs,   dt, Tf_new, Ts_new);
+    apply_bc(P, cA_new, cB_new, cC_new, Tf_new, Ts_new);
+    S.cA.swap(cA_new); S.cB.swap(cB_new); S.cC.swap(cC_new);
+    S.Tf.swap(Tf_new); S.Ts.swap(Ts_new);
+}
+
+int main() {
     using T = double;
 
     // （任意）標準出力のバッファリング制御
@@ -28,72 +82,16 @@ int main(){
     // 作業配列
     std::vector<T> rs, Rvol, cA_new, cB_new, cC_new, Tf_new, Ts_new;
 
-    // gnuplot, conc.dat と temp.dat を原子的に更新
-    auto dump_snapshot = [&](const State<T>& Sref){
-        {
-            std::ofstream ofs("conc.tmp", std::ios::binary);
-            ofs << std::fixed << std::setprecision(15);
-            for(int i=0;i<Sref.Nx;i++){
-                ofs << Sref.x[i]  << " "
-                    << Sref.cA[i] << " "
-                    << Sref.cB[i] << " "
-                    << Sref.cC[i] << "\n";
-            }
-            ofs.flush();
-            ofs.close();
-            std::rename("conc.tmp","conc.dat");
-        }
-        {
-            std::ofstream ofs("temp.tmp", std::ios::binary);
-            ofs << std::fixed << std::setprecision(15);
-            for(int i=0;i<Sref.Nx;i++){
-                ofs << Sref.x[i] << " "
-                    << Sref.Tf[i] << " "
-                    << Sref.Ts[i] << "\n";
-            }
-            ofs.flush();
-            ofs.close();
-            std::rename("temp.tmp","temp.dat");
-        }
-    };
-
     // 初期スナップショット
     dump_snapshot(S);
 
-    for(int n=0; n<nsteps; ++n){
-        // (1) 反応
-        compute_reaction(P, S, rs, Rvol);
-
-        // (2) 種・エネルギー更新（完全陽）
-        update_species_explicit(P, S, Rvol, dt, cA_new, cB_new, cC_new);
-        update_energy_explicit (P, S, rs,   dt, Tf_new, Ts_new);
-
-        // (3) 境界条件
-        apply_bc(P, cA_new, cB_new, cC_new, Tf_new, Ts_new);
-
-        // (4) commit
-        S.cA.swap(cA_new); S.cB.swap(cB_new); S.cC.swap(cC_new);
-        S.Tf.swap(Tf_new); S.Ts.swap(Ts_new);
-
-        // (5) 可視化スナップショット
-        if(n % output_interval == 0){
+    for (int n = 0; n < nsteps; ++n) {
+        advance(P, S, dt, rs, Rvol, cA_new, cB_new, cC_new, Tf_new, Ts_new);
+        if (n % output_interval == 0)
             dump_snapshot(S);
-        }
     }
 
-    // 最終結果（列: x cA cB cC Tf Ts）を保存（15桁）
-    {
-        std::ofstream ofs("result.dat", std::ios::binary);
-        ofs << std::fixed << std::setprecision(15);
-        for(int i=0;i<S.Nx;i++){
-            ofs << S.x[i]  << " "
-                << S.cA[i] << " "
-                << S.cB[i] << " "
-                << S.cC[i] << " "
-                << S.Tf[i] << " "
-                << S.Ts[i] << "\n";
-        }
-    }
-
+    save_result("result.dat", S);
     return 0;
 }
+
