@@ -341,43 +341,52 @@ static void rk45(std::vector<T>& y, T t0, T t1, T P,
     std::vector<T> k1(m),k2(m),k3(m),k4(m),k5(m),k6(m),yt(m),y4(m),y5(m),errv(m);
     while(t < t1){
         if(t + h > t1) h = t1 - t;
-        compute_rhs(reactions, thermo, P, y, k1);
-        for(size_t i=0;i<m;++i) yt[i] = y[i] + h*(T(1.0)/T(4.0))*k1[i];
-        compute_rhs(reactions, thermo, P, yt, k2);
-        for(size_t i=0;i<m;++i) yt[i] = y[i] + h*(T(3.0)/T(32.0)*k1[i] + T(9.0)/T(32.0)*k2[i]);
-        compute_rhs(reactions, thermo, P, yt, k3);
-        for(size_t i=0;i<m;++i)
-            yt[i] = y[i] + h*(T(1932.0)/T(2197.0)*k1[i] - T(7200.0)/T(2197.0)*k2[i] + T(7296.0)/T(2197.0)*k3[i]);
-        compute_rhs(reactions, thermo, P, yt, k4);
-        for(size_t i=0;i<m;++i)
-            yt[i] = y[i] + h*(T(439.0)/T(216.0)*k1[i] - T(8.0)*k2[i] + T(3680.0)/T(513.0)*k3[i] - T(845.0)/T(4104.0)*k4[i]);
-        compute_rhs(reactions, thermo, P, yt, k5);
-        for(size_t i=0;i<m;++i)
-            yt[i] = y[i] + h*( -T(8.0)/T(27.0)*k1[i] + T(2.0)*k2[i] - T(3544.0)/T(2565.0)*k3[i]
-                               + T(1859.0)/T(4104.0)*k4[i] - T(11.0)/T(40.0)*k5[i]);
-        compute_rhs(reactions, thermo, P, yt, k6);
+        T err;
+        do{
+            compute_rhs(reactions, thermo, P, y, k1);
+            for(size_t i=0;i<m;++i) yt[i] = y[i] + h*(T(1.0)/T(4.0))*k1[i];
+            compute_rhs(reactions, thermo, P, yt, k2);
+            for(size_t i=0;i<m;++i) yt[i] = y[i] + h*(T(3.0)/T(32.0)*k1[i] + T(9.0)/T(32.0)*k2[i]);
+            compute_rhs(reactions, thermo, P, yt, k3);
+            for(size_t i=0;i<m;++i)
+                yt[i] = y[i] + h*(T(1932.0)/T(2197.0)*k1[i] - T(7200.0)/T(2197.0)*k2[i] + T(7296.0)/T(2197.0)*k3[i]);
+            compute_rhs(reactions, thermo, P, yt, k4);
+            for(size_t i=0;i<m;++i)
+                yt[i] = y[i] + h*(T(439.0)/T(216.0)*k1[i] - T(8.0)*k2[i] + T(3680.0)/T(513.0)*k3[i] - T(845.0)/T(4104.0)*k4[i]);
+            compute_rhs(reactions, thermo, P, yt, k5);
+            for(size_t i=0;i<m;++i)
+                yt[i] = y[i] + h*( -T(8.0)/T(27.0)*k1[i] + T(2.0)*k2[i] - T(3544.0)/T(2565.0)*k3[i]
+                                   + T(1859.0)/T(4104.0)*k4[i] - T(11.0)/T(40.0)*k5[i]);
+            compute_rhs(reactions, thermo, P, yt, k6);
 
-        for(size_t i=0;i<m;++i){
-            y4[i] = y[i] + h*( T(25.0)/T(216.0)*k1[i] + T(1408.0)/T(2565.0)*k3[i]
-                               + T(2197.0)/T(4104.0)*k4[i] - T(1.0)/T(5.0)*k5[i] );
-            y5[i] = y[i] + h*( T(16.0)/T(135.0)*k1[i] + T(6656.0)/T(12825.0)*k3[i]
-                               + T(28561.0)/T(56430.0)*k4[i] - T(9.0)/T(50.0)*k5[i]
-                               + T(2.0)/T(55.0)*k6[i] );
-            errv[i] = y5[i] - y4[i];
-        }
-        T err = T(0);
-        for(size_t i=0;i<m;++i) err = std::max(err, std::abs(errv[i]));
-        if(err <= tol){
-            y = y5;
-            T sum = T(0);
-            for(size_t i=0;i<m-1;++i){
-                if(y[i] < T(0)) y[i] = T(0);
-                sum += y[i];
+            for(size_t i=0;i<m;++i){
+                y4[i] = y[i] + h*( T(25.0)/T(216.0)*k1[i] + T(1408.0)/T(2565.0)*k3[i]
+                                   + T(2197.0)/T(4104.0)*k4[i] - T(1.0)/T(5.0)*k5[i] );
+                y5[i] = y[i] + h*( T(16.0)/T(135.0)*k1[i] + T(6656.0)/T(12825.0)*k3[i]
+                                   + T(28561.0)/T(56430.0)*k4[i] - T(9.0)/T(50.0)*k5[i]
+                                   + T(2.0)/T(55.0)*k6[i] );
+                errv[i] = y5[i] - y4[i];
             }
-            if(sum>0) for(size_t i=0;i<m-1;++i) y[i] /= sum;
-            t += h;
-            if(cb) cb(t, y);
+            err = T(0);
+            for(size_t i=0;i<m;++i) err = std::max(err, std::abs(errv[i]));
+            if(err>tol){
+                T fac = (err>0)? safety*std::pow(tol/err, T(0.2)) : T(0.5);
+                fac = std::min(T(5.0), std::max(T(0.1), fac));
+                h *= fac;
+                if(t + h > t1) h = t1 - t;
+            }
+        }while(err>tol);
+
+        y = y5;
+        T sum = T(0);
+        for(size_t i=0;i<m-1;++i){
+            if(y[i] < T(0)) y[i] = T(0);
+            sum += y[i];
         }
+        if(sum>0) for(size_t i=0;i<m-1;++i) y[i] /= sum;
+        t += h;
+        if(cb) cb(t, y);
+
         T fac = (err>0)? safety*std::pow(tol/err, T(0.2)) : T(5.0);
         fac = std::min(T(5.0), std::max(T(0.1), fac));
         h *= fac;
@@ -419,36 +428,45 @@ static void rk78(std::vector<T>& y, T t0, T t1, T P,
 
     while(t < t1){
         if(t + h > t1) h = t1 - t;
-        compute_rhs(reactions, thermo, P, y, k[0]);
-        for(int s=1; s<13; ++s){
+        T err;
+        do{
+            compute_rhs(reactions, thermo, P, y, k[0]);
+            for(int s=1; s<13; ++s){
+                for(size_t i=0;i<m;++i){
+                    yt[i] = y[i];
+                    for(int j=0;j<s; ++j) yt[i] += h * a[s][j] * k[j][i];
+                }
+                compute_rhs(reactions, thermo, P, yt, k[s]);
+            }
             for(size_t i=0;i<m;++i){
-                yt[i] = y[i];
-                for(int j=0;j<s; ++j) yt[i] += h * a[s][j] * k[j][i];
+                T sum_b = T(0), sum_e = T(0);
+                for(int s=0; s<13; ++s){
+                    sum_b += b[s]*k[s][i];
+                    sum_e += db[s]*k[s][i];
+                }
+                y8[i] = y[i] + h*sum_b;
+                errv[i] = h*sum_e;
             }
-            compute_rhs(reactions, thermo, P, yt, k[s]);
-        }
-        for(size_t i=0;i<m;++i){
-            T sum_b = T(0), sum_e = T(0);
-            for(int s=0; s<13; ++s){
-                sum_b += b[s]*k[s][i];
-                sum_e += db[s]*k[s][i];
+            err = T(0);
+            for(size_t i=0;i<m;++i) err = std::max(err, std::abs(errv[i]));
+            if(err>tol){
+                T fac = (err>0)? safety*std::pow(tol/err, T(1.0)/T(8.0)) : T(0.5);
+                fac = std::min(T(4.0), std::max(T(0.1), fac));
+                h *= fac;
+                if(t + h > t1) h = t1 - t;
             }
-            y8[i] = y[i] + h*sum_b;
-            errv[i] = h*sum_e;
+        }while(err>tol);
+
+        y = y8;
+        T sum = T(0);
+        for(size_t i=0;i<m-1;++i){
+            if(y[i] < T(0)) y[i] = T(0);
+            sum += y[i];
         }
-        T err = T(0);
-        for(size_t i=0;i<m;++i) err = std::max(err, std::abs(errv[i]));
-        if(err <= tol){
-            y = y8;
-            T sum = T(0);
-            for(size_t i=0;i<m-1;++i){
-                if(y[i] < T(0)) y[i] = T(0);
-                sum += y[i];
-            }
-            if(sum>0) for(size_t i=0;i<m-1;++i) y[i] /= sum;
-            t += h;
-            if(cb) cb(t, y);
-        }
+        if(sum>0) for(size_t i=0;i<m-1;++i) y[i] /= sum;
+        t += h;
+        if(cb) cb(t, y);
+
         T fac = (err>0)? safety*std::pow(tol/err, T(1.0)/T(8.0)) : T(4.0);
         fac = std::min(T(4.0), std::max(T(0.1), fac));
         h *= fac;
