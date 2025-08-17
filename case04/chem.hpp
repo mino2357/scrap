@@ -209,18 +209,23 @@ inline bool load_thermo(const std::string& fname,
 }
 
 // Compute d/dt of species mole fractions and temperature given current state.
-// A very coarse constant-
-// Cp energy equation is used for temperature evolution.
+// A more complete energy equation is used where temperature evolution is
+// driven by species enthalpies obtained from NASA polynomial coefficients
+// in `thermo`.
 template<typename T>
 inline void compute_rhs(const std::vector<Reaction<T>>& reactions,
-                        const std::vector<ThermoData<T>>& /*thermo*/,
+                        const std::vector<ThermoData<T>>& thermo,
                         T P, const std::vector<T>& y, std::vector<T>& dy){
     const T R = static_cast<T>(8.3144621);
-    size_t n = y.size()-1;
+    size_t n = y.size()-1;                 // last entry is temperature
     T Tval = y[n];
     if(!std::isfinite(Tval) || Tval < T(1e-6)) Tval = T(1e-6);
     if(Tval > T(1e4)) Tval = T(1e4);
+
+    // initialise derivatives
     for(size_t i=0;i<=n;++i) dy[i]=T(0);
+
+    // species concentrations (ideal gas, constant pressure)
     std::vector<T> conc(n);
     for(size_t i=0;i<n;++i){
         T yi = y[i];
@@ -228,6 +233,8 @@ inline void compute_rhs(const std::vector<Reaction<T>>& reactions,
         if(yi > T(1)) yi = T(1);
         conc[i] = yi*P/(R*Tval);
     }
+
+    // reaction source terms for species
     for(const auto& r : reactions){
         T k = r.A*std::exp(r.b*std::log(Tval)-r.E/(R*Tval));
         T rate = k;
@@ -239,10 +246,33 @@ inline void compute_rhs(const std::vector<Reaction<T>>& reactions,
         for(auto [idx,nu] : r.react) dy[idx] -= nu*rate;
         for(auto [idx,nu] : r.prod)  dy[idx] += nu*rate;
     }
-    // Temperature equation: assume constant Cp
-    const T Cp = static_cast<T>(1000.0);
-    T omega=0;
-    for(size_t i=0;i<n;++i) omega += dy[i];
-    dy[n] = -omega*R*Tval/Cp;
+
+    // prevent negative time derivatives when species is already depleted
+    for(size_t i=0;i<n;++i)
+        if(y[i] <= T(0) && dy[i] < T(0)) dy[i] = T(0);
+
+    // Temperature equation using species enthalpies from thermo data
+    T sumY = T(0);
+    for(size_t i=0;i<n;++i) sumY += y[i];
+    T cp_mix = T(0);
+    T heat = T(0);
+    for(size_t i=0;i<n;++i){
+        const auto& td = thermo[i];
+        const T* c = (Tval >= td.t_mid) ? td.high : td.low;
+        T t = Tval;
+        T t2 = t*t;
+        T t3 = t2*t;
+        T t4 = t3*t;
+        // cp and enthalpy (J/mol/K and J/mol)
+        T cp_i = R*(c[0] + c[1]*t + c[2]*t2 + c[3]*t3 + c[4]*t4);
+        T h_i = R*t*(c[0] + c[1]*t/T(2) + c[2]*t2/T(3) +
+                     c[3]*t3/T(4) + c[4]*t4/T(5) + c[5]/t);
+        T Xi = (sumY>0)? y[i]/sumY : T(0);
+        cp_mix += Xi * cp_i;
+        heat += h_i * dy[i];
+    }
+    T Ctot = P/(R*Tval); // total molar concentration
+    if(cp_mix <= T(0)) cp_mix = T(1); // prevent divide-by-zero
+    dy[n] = -heat / (Ctot * cp_mix);
 }
 

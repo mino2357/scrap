@@ -45,6 +45,8 @@ inline void rk4(std::vector<T>& y, T t0, T t1, T P,
         compute_rhs(reactions, thermo, P, yt, k4);
         for(size_t i=0;i<m;++i)
             y[i] += (h/T(6))*(k1[i] + T(2)*k2[i] + T(2)*k3[i] + k4[i]);
+        for(size_t i=0;i<m-1;++i)
+            if(y[i] < T(0)) y[i] = T(0);
         t += h;
     }
 }
@@ -113,6 +115,8 @@ inline void rk45(std::vector<T>& y, T t0, T t1, T P,
 
         // Accept the step and propose a new step size
         y = y5;
+        for(size_t i=0;i<m-1;++i)
+            if(y[i] < T(0)) y[i] = T(0);
         t += h;
 
         T fac = (err>0)? safety*std::pow(T(1)/err, T(0.2)) : T(5.0);
@@ -195,6 +199,8 @@ inline void rk78(std::vector<T>& y, T t0, T t1, T P,
 
         // Accept the step and adjust step size for the next iteration
         y = y8;
+        for(size_t i=0;i<m-1;++i)
+            if(y[i] < T(0)) y[i] = T(0);
         t += h;
 
         T fac = (err>0)? safety*std::pow(T(1)/err, T(1.0)/T(8.0)) : T(4.0);
