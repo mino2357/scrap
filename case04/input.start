@@ -1,0 +1,15 @@
+## Example configuration for case04
+# Lines beginning with '#' are ignored.
+
+# Simulation controls ------------------------------------------------------
+PRES 202650     # pressure [Pa]
+TEMP 1000.0     # initial temperature [K]
+TIME 1e-3       # integration end time [s]
+DELT 1e-5       # output interval [s]
+#DT   1e-7      # optional step size override
+
+# Initial species amounts (arbitrary moles) --------------------------------
+H2 1.0
+O2 1.0
+N2 3.76
+END

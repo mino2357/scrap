@@ -29,7 +29,7 @@ species and temperature using NASA polynomial thermodynamic data loaded from
 `therm.dat`.  The output file (`case04.dat`) lists mole fractions of all
 species and the temperature history.
 
-Initial conditions can be customised via `input.inp` which accepts entries such
+Initial conditions can be customised via `input.start` which accepts entries such
 as
 
 ```
@@ -55,7 +55,7 @@ command line:
 Running the example produces `case04.dat` containing time histories of mole
 fractions and temperature.  A bundled gnuplot script (`plot.gp`) is invoked
 automatically to create `case04.png`, visualizing mole fraction versus time for
-every species.
+every species, and `case04_conc.png` showing molar concentration histories.
 
 ## Build and run
 
@@ -63,7 +63,7 @@ every species.
 make -C case04 run
 ```
 
-The command builds the solver, runs the simulation and generates the PNG plot.
+The command builds the solver, runs the simulation and generates the PNG plots.
 To experiment with other integrators, invoke the executable directly, e.g.
 
 ```bash
