@@ -19,7 +19,7 @@
 template<typename T>
 using Integrator = void(*)(std::vector<T>&, T, T, T,
                           T, T,
-                          const std::vector<Reaction<T>>&, const std::vector<ThermoData<T>>&);
+                          const std::vector<Reaction<T>>&, const std::vector<ThermoData<T>> &);
 
 // Classical fourth-order Runge–Kutta with a fixed number of steps.
 // The tolerance arguments are ignored; this routine is mainly used for

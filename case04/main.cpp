@@ -67,7 +67,9 @@ int main(int argc, char** argv){
             else if(key=="TEMP") cfg >> T0;
             else if(key=="TIME") cfg >> t_end;
             else if(key=="DELT") cfg >> output_interval;
-            else{
+            else if(key=="ENERG" || key=="ENERGY"){
+                cfg.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            } else{
                 T val; cfg >> val; set_init(key, val);
             }
         }
