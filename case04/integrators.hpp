@@ -14,6 +14,10 @@
 #include <algorithm>
 #include "chem.hpp"
 
+#ifndef RK_CLAMP_NEGATIVE
+#define RK_CLAMP_NEGATIVE 1
+#endif
+
 // Generic function pointer type for a time integrator.  The method updates
 // `y` in-place while keeping track of the provided tolerances.  An additional
 // parameter `dt` supplies an initial step size for the integration.
@@ -46,8 +50,10 @@ inline void rk4(std::vector<T>& y, T t0, T t1, T dt, T P,
         compute_rhs(reactions, thermo, P, yt, k4);
         for(size_t i=0;i<m;++i)
             y[i] += (h/T(6))*(k1[i] + T(2)*k2[i] + T(2)*k3[i] + k4[i]);
+        #if RK_CLAMP_NEGATIVE
         for(size_t i=0;i<m-1;++i)
             if(y[i] < T(0)) y[i] = T(0);
+        #endif
         t += h;
     }
 }
@@ -116,8 +122,10 @@ inline void rk45(std::vector<T>& y, T t0, T t1, T dt, T P,
 
         // Accept the step and propose a new step size
         y = y5;
+        #if RK_CLAMP_NEGATIVE
         for(size_t i=0;i<m-1;++i)
             if(y[i] < T(0)) y[i] = T(0);
+        #endif
         t += h;
 
         T fac = (err>0)? safety*std::pow(T(1)/err, T(0.2)) : T(5.0);
@@ -200,8 +208,10 @@ inline void rk78(std::vector<T>& y, T t0, T t1, T dt, T P,
 
         // Accept the step and adjust step size for the next iteration
         y = y8;
+        #if RK_CLAMP_NEGATIVE
         for(size_t i=0;i<m-1;++i)
             if(y[i] < T(0)) y[i] = T(0);
+        #endif
         t += h;
 
         T fac = (err>0)? safety*std::pow(T(1)/err, T(1.0)/T(8.0)) : T(4.0);
