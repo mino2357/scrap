@@ -37,6 +37,8 @@ PRES 202650     # pressure in Pa
 TEMP 1000       # initial temperature in K
 TIME 1e-3       # end time
 DELT 1e-5       # output interval
+RTOL 1e-6       # relative tolerance for adaptive integrators
+ATOL 1e-12      # absolute tolerance
 H2   1.0        # species amounts
 O2   1.0
 N2   3.76
@@ -56,6 +58,9 @@ Running the example produces `case04.dat` containing time histories of mole
 fractions and temperature.  A bundled gnuplot script (`plot.gp`) is invoked
 automatically to create `case04.png`, visualizing mole fraction versus time for
 every species, and `case04_conc.png` showing molar concentration histories.
+Additionally, `plot_thermo.py` reads `therm.dat` and writes `cp.png`,
+`h.png` and `s.png`, plotting specific heat, enthalpy and entropy as functions
+of temperature for all species.
 
 ## Build and run
 

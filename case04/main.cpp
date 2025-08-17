@@ -56,6 +56,8 @@ int main(int argc, char** argv){
     T t_end = T(1e-3);
     T output_interval = T(1e-5);
     T dt = output_interval / T(1000);   // Initial step size
+    T rtol = T(1e-6);                   // Relative tolerance
+    T atol = T(1e-12);                  // Absolute tolerance
 
     // Optional overrides from input.start -----------------------------------
     std::ifstream cfg("input.start");
@@ -69,6 +71,8 @@ int main(int argc, char** argv){
             else if(key=="TIME") cfg >> t_end;
             else if(key=="DELT") { cfg >> output_interval; dt = output_interval / T(1000); }
             else if(key=="DT")   cfg >> dt;
+            else if(key=="RTOL") cfg >> rtol;
+            else if(key=="ATOL") cfg >> atol;
             else if(key=="ENERG" || key=="ENERGY"){
                 cfg.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             } else{
@@ -93,9 +97,6 @@ int main(int argc, char** argv){
         else if(method == "rk78") integrator = rk78<T>;
     }
 
-    const T rtol = T(1e-6);
-    const T atol = T(1e-12);
-
     // March solution in time ------------------------------------------------
     T t = T(0);
     std::vector<T> times{t};
@@ -115,7 +116,9 @@ int main(int argc, char** argv){
     std::ofstream ofs("case04.dat");
     std::ofstream ofs_conc("case04_conc.dat");
     ofs.setf(std::ios::scientific);
+    ofs.precision(15);
     ofs_conc.setf(std::ios::scientific);
+    ofs_conc.precision(15);
     ofs << "time";
     ofs_conc << "time";
     for(const auto& s : species){
@@ -140,8 +143,10 @@ int main(int argc, char** argv){
         ofs_conc << '\n';
     }
 
+    std::cout.setf(std::ios::scientific);
+    std::cout.precision(15);
     for(size_t i=0;i<n;++i)
-        std::cout<<species[i]<<" "<<y[i]<<"\n";
+        std::cout << species[i] << " " << y[i] << "\n";
     return 0;
 }
 
