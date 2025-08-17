@@ -76,8 +76,9 @@ parse_side(const std::string& side, const std::map<std::string,int>& idx){
 }
 
 // Read a very small subset of the CHEMKIN format: species names and simple
-// irreversible reactions with Arrhenius parameters.  Lines starting with '!' are
-// treated as comments and ignored.
+// reactions with Arrhenius parameters.  Lines starting with '!' are treated as
+// comments and ignored.  Reaction arrows "=>", "<=>" and the common reversible
+// form "=" are recognized.
 template<typename T>
 inline bool load_chemkin(const std::string& fname,
                          std::vector<std::string>& species,
@@ -143,6 +144,9 @@ inline bool load_chemkin(const std::string& fname,
             } else if((pos = expr.find("=>")) != std::string::npos){
                 lhs = expr.substr(0,pos);
                 rhs = expr.substr(pos+2);
+            } else if((pos = expr.find('=')) != std::string::npos){
+                lhs = expr.substr(0,pos);
+                rhs = expr.substr(pos+1);
             } else continue;
             Reaction<T> r;
             r.react = parse_side<T>(lhs, idx);
@@ -214,13 +218,24 @@ inline void compute_rhs(const std::vector<Reaction<T>>& reactions,
     const T R = static_cast<T>(8.3144621);
     size_t n = y.size()-1;
     T Tval = y[n];
+    if(!std::isfinite(Tval) || Tval < T(1e-6)) Tval = T(1e-6);
+    if(Tval > T(1e4)) Tval = T(1e4);
     for(size_t i=0;i<=n;++i) dy[i]=T(0);
     std::vector<T> conc(n);
-    for(size_t i=0;i<n;++i) conc[i] = y[i]*P/(R*Tval);
+    for(size_t i=0;i<n;++i){
+        T yi = y[i];
+        if(!std::isfinite(yi) || yi < T(0)) yi = T(0);
+        if(yi > T(1)) yi = T(1);
+        conc[i] = yi*P/(R*Tval);
+    }
     for(const auto& r : reactions){
         T k = r.A*std::exp(r.b*std::log(Tval)-r.E/(R*Tval));
         T rate = k;
         for(auto [idx,nu] : r.react) rate *= std::pow(conc[idx],nu);
+        if(!std::isfinite(rate)) continue;
+        const T max_rate = T(1e6);
+        if(rate > max_rate) rate = max_rate;
+        if(rate < -max_rate) rate = -max_rate;
         for(auto [idx,nu] : r.react) dy[idx] -= nu*rate;
         for(auto [idx,nu] : r.prod)  dy[idx] += nu*rate;
     }

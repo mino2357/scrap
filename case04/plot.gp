@@ -2,6 +2,7 @@ set terminal pngcairo size 800,600
 set output 'case04.png'
 set xlabel 'Time [s]'
 set ylabel 'Mole fraction'
+set logscale y
 set key outside
 set grid
 set key autotitle columnhead
