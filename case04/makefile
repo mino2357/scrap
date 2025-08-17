@@ -11,6 +11,7 @@ $(TARGET): $(SOURCES)
 	$(CXX) $(CXXFLAGS) $(SOURCES) -o $@
 
 run: $(TARGET)
+	python plot_thermo.py
 	./$(TARGET) rk78
 	gnuplot plot.gp
 

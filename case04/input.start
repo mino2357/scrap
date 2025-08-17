@@ -7,6 +7,8 @@ TEMP 1000.0     # initial temperature [K]
 TIME 1e-3       # integration end time [s]
 DELT 1e-5       # output interval [s]
 #DT   1e-7      # optional step size override
+RTOL 1e-6       # relative tolerance
+ATOL 1e-12      # absolute tolerance
 
 # Initial species amounts (arbitrary moles) --------------------------------
 H2 1.0
