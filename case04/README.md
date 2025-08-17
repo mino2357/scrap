@@ -8,9 +8,8 @@ constant pressure of **202650 Pa**.  The program supports a classical
 fourth‑order method as well as adaptive Runge–Kutta–Fehlberg 4(5) and 7(8)
 integrators.
 
-The solver now also evaluates the **energy equation**, allowing the mixture
-temperature to evolve according to the reaction enthalpies provided in
-`therm.dat`.
+The solver evaluates the **energy equation**, allowing the mixture temperature
+to evolve according to reaction enthalpies provided in `therm.dat`.
 
 ### Initial conditions
 
