@@ -116,7 +116,9 @@ int main(int argc, char** argv){
     std::ofstream ofs("case04.dat");
     std::ofstream ofs_conc("case04_conc.dat");
     ofs.setf(std::ios::scientific);
+    ofs.precision(15);
     ofs_conc.setf(std::ios::scientific);
+    ofs_conc.precision(15);
     ofs << "time";
     ofs_conc << "time";
     for(const auto& s : species){
@@ -141,8 +143,10 @@ int main(int argc, char** argv){
         ofs_conc << '\n';
     }
 
+    std::cout.setf(std::ios::scientific);
+    std::cout.precision(15);
     for(size_t i=0;i<n;++i)
-        std::cout<<species[i]<<" "<<y[i]<<"\n";
+        std::cout << species[i] << " " << y[i] << "\n";
     return 0;
 }
 
