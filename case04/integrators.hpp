@@ -15,9 +15,10 @@
 #include "chem.hpp"
 
 // Generic function pointer type for a time integrator.  The method updates
-// `y` in-place while keeping track of the provided tolerances.
+// `y` in-place while keeping track of the provided tolerances.  An additional
+// parameter `dt` supplies an initial step size for the integration.
 template<typename T>
-using Integrator = void(*)(std::vector<T>&, T, T, T,
+using Integrator = void(*)(std::vector<T>&, T, T, T, T,
                           T, T,
                           const std::vector<Reaction<T>>&, const std::vector<ThermoData<T>> &);
 
@@ -25,12 +26,12 @@ using Integrator = void(*)(std::vector<T>&, T, T, T,
 // The tolerance arguments are ignored; this routine is mainly used for
 // reference and debugging.
 template<typename T>
-inline void rk4(std::vector<T>& y, T t0, T t1, T P,
+inline void rk4(std::vector<T>& y, T t0, T t1, T dt, T P,
                T /*rtol*/, T /*atol*/,
                const std::vector<Reaction<T>>& reactions,
                const std::vector<ThermoData<T>>& thermo){
-    // Use a simple constant step size based on 1000 sub-intervals.
-    T h = (t1 - t0) / T(1000);
+    // Use a simple constant step size provided by the caller.
+    T h = dt;
     T t = t0;
     size_t m = y.size();
     std::vector<T> k1(m),k2(m),k3(m),k4(m),yt(m);
@@ -56,12 +57,12 @@ inline void rk4(std::vector<T>& y, T t0, T t1, T P,
 // local truncation error.  A scaled L2 norm is used to decide if the
 // step is accepted and how to adapt the step size.
 template<typename T>
-inline void rk45(std::vector<T>& y, T t0, T t1, T P,
+inline void rk45(std::vector<T>& y, T t0, T t1, T dt, T P,
                 T rtol, T atol,
                 const std::vector<Reaction<T>>& reactions,
                 const std::vector<ThermoData<T>>& thermo){
     const T safety = T(0.9);              // Conservative step-size factor
-    T h = (t1 - t0) / T(1000);            // Initial guess for step size
+    T h = dt;                             // Initial guess for step size
     T t = t0;
     const size_t m = y.size();
     std::vector<T> k1(m),k2(m),k3(m),k4(m),k5(m),k6(m),yt(m),y4(m),y5(m),errv(m);
@@ -128,12 +129,12 @@ inline void rk45(std::vector<T>& y, T t0, T t1, T P,
 // High-order Dormand–Prince 7/8 method taken from Boost.Odeint.
 // Similar to rk45 but using a higher-order pair and 13 stages.
 template<typename T>
-inline void rk78(std::vector<T>& y, T t0, T t1, T P,
+inline void rk78(std::vector<T>& y, T t0, T t1, T dt, T P,
                 T rtol, T atol,
                 const std::vector<Reaction<T>>& reactions,
                 const std::vector<ThermoData<T>>& thermo){
     const T safety = T(0.9);
-    T h = (t1 - t0) / T(1000);
+    T h = dt;
     T t = t0;
     const size_t m = y.size();
     std::vector<std::vector<T>> k(13, std::vector<T>(m));
