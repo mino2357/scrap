@@ -55,6 +55,7 @@ int main(int argc, char** argv){
     T T0 = T(1000.0);
     T t_end = T(1e-3);
     T output_interval = T(1e-5);
+    T dt = output_interval / T(1000);   // Initial step size
 
     // Optional overrides from input.inp -------------------------------------
     std::ifstream cfg("input.inp");
@@ -66,7 +67,8 @@ int main(int argc, char** argv){
             if(key=="PRES")      cfg >> P;
             else if(key=="TEMP") cfg >> T0;
             else if(key=="TIME") cfg >> t_end;
-            else if(key=="DELT") cfg >> output_interval;
+            else if(key=="DELT") { cfg >> output_interval; dt = output_interval / T(1000); }
+            else if(key=="DT")   cfg >> dt;
             else if(key=="ENERG" || key=="ENERGY"){
                 cfg.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             } else{
@@ -100,7 +102,7 @@ int main(int argc, char** argv){
     std::vector<std::vector<T>> history{y};
     while(t < t_end){
         T next = std::min(t + output_interval, t_end);
-        integrator(y, t, next, P, rtol, atol, reactions, thermo);
+        integrator(y, t, next, dt, P, rtol, atol, reactions, thermo);
         t = next;
         times.push_back(t);
         history.push_back(y);
