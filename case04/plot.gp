@@ -10,6 +10,12 @@ set grid
 set key autotitle columnhead
 plot for [i=2:11] 'case04.dat' using 1:i with lines lw 2
 
+# Molar concentration history for all species
+set output 'case04_conc.png'
+set ylabel 'Concentration [mol/m^3]'
+set key autotitle columnhead
+plot for [i=2:11] 'case04_conc.dat' using 1:i with lines lw 2
+
 # Temperature history
 set output 'case04_temp.png'
 unset logscale y

@@ -57,8 +57,8 @@ int main(int argc, char** argv){
     T output_interval = T(1e-5);
     T dt = output_interval / T(1000);   // Initial step size
 
-    // Optional overrides from input.inp -------------------------------------
-    std::ifstream cfg("input.inp");
+    // Optional overrides from input.start -----------------------------------
+    std::ifstream cfg("input.start");
     if(cfg){
         std::string key;
         while(cfg >> key){
@@ -113,16 +113,31 @@ int main(int argc, char** argv){
     const size_t m = n + 1;
     std::vector<T> dy(m);
     std::ofstream ofs("case04.dat");
+    std::ofstream ofs_conc("case04_conc.dat");
     ofs.setf(std::ios::scientific);
+    ofs_conc.setf(std::ios::scientific);
     ofs << "time";
-    for(const auto& s : species) ofs << ' ' << s;
+    ofs_conc << "time";
+    for(const auto& s : species){
+        ofs << ' ' << s;
+        ofs_conc << ' ' << s;
+    }
     ofs << " T dTdt\n";
+    ofs_conc << '\n';
+    const T R = T(8.3144621);
     for(size_t k=0;k<times.size();++k){
         T sum=T(0); for(size_t i=0;i<n;++i) sum+=history[k][i];
         compute_rhs(reactions, thermo, P, history[k], dy);
         ofs << times[k];
-        for(size_t i=0;i<n;++i) ofs << ' ' << (sum>0? history[k][i]/sum : T(0));
+        ofs_conc << times[k];
+        T Ctot = P/(R*history[k][n]);
+        for(size_t i=0;i<n;++i){
+            T Xi = (sum>0? history[k][i]/sum : T(0));
+            ofs << ' ' << Xi;
+            ofs_conc << ' ' << Xi*Ctot;
+        }
         ofs << ' ' << history[k][n] << ' ' << dy[n] << '\n';
+        ofs_conc << '\n';
     }
 
     for(size_t i=0;i<n;++i)
