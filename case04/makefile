@@ -18,12 +18,9 @@ $(TEST_TARGET): $(TEST_SOURCES)
 >$(CXX) $(CXXFLAGS) $(TEST_SOURCES) -o $@
 
 run: $(TARGET)
->python plot_thermo.py
->./$(TARGET) rk78
->gnuplot plot.gp
-
-test: $(TEST_TARGET)
->./$(TEST_TARGET)
+	python3 plot_thermo.py
+	./$(TARGET) rk78
+	gnuplot plot.gp
 
 clean:
 >rm -f $(TARGET) $(TEST_TARGET)
