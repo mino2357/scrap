@@ -106,15 +106,19 @@ int main(int argc, char** argv){
 
     // Write history to file for gnuplot ------------------------------------
     const size_t n = species.size();
+    const size_t m = n + 1;
+    std::vector<T> dy(m);
     std::ofstream ofs("case04.dat");
+    ofs.setf(std::ios::scientific);
     ofs << "time";
     for(const auto& s : species) ofs << ' ' << s;
-    ofs << " T\n";
+    ofs << " T dTdt\n";
     for(size_t k=0;k<times.size();++k){
         T sum=T(0); for(size_t i=0;i<n;++i) sum+=history[k][i];
+        compute_rhs(reactions, thermo, P, history[k], dy);
         ofs << times[k];
         for(size_t i=0;i<n;++i) ofs << ' ' << (sum>0? history[k][i]/sum : T(0));
-        ofs << ' ' << history[k][n] << '\n';
+        ofs << ' ' << history[k][n] << ' ' << dy[n] << '\n';
     }
 
     for(size_t i=0;i<n;++i)
