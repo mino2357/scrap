@@ -13,12 +13,13 @@
 
 // High precision floating-point type and state vector
 using T = __float128;
-using state_type = std::array<T, 12>; // (x, y, vx, vy) for three bodies
+constexpr int N = 12;                    // state vector dimension
+using state_type = std::array<T, N>;      // (x, y, vx, vy) for three bodies
 
 // Basic arithmetic on state vectors
 state_type operator+(const state_type& a, const state_type& b) {
     state_type r;
-    for (size_t i = 0; i < a.size(); ++i) {
+    for (int i = 0; i < N; ++i) {
         r[i] = a[i] + b[i];
     }
     return r;
@@ -26,7 +27,7 @@ state_type operator+(const state_type& a, const state_type& b) {
 
 state_type operator-(const state_type& a, const state_type& b) {
     state_type r;
-    for (size_t i = 0; i < a.size(); ++i) {
+    for (int i = 0; i < N; ++i) {
         r[i] = a[i] - b[i];
     }
     return r;
@@ -34,7 +35,7 @@ state_type operator-(const state_type& a, const state_type& b) {
 
 state_type operator*(const T& c, const state_type& a) {
     state_type r;
-    for (size_t i = 0; i < a.size(); ++i) {
+    for (int i = 0; i < N; ++i) {
         r[i] = c * a[i];
     }
     return r;
@@ -115,7 +116,7 @@ void modified_midpoint(const three_body_rhs& rhs,
     T h = htot / nstep;
 
     // First step using Euler's method
-    for (size_t i = 0; i < y.size(); ++i) {
+    for (int i = 0; i < N; ++i) {
         yn[i] = y[i] + h * dydx[i];
     }
 
@@ -123,7 +124,7 @@ void modified_midpoint(const three_body_rhs& rhs,
     T x = t + h;
     for (int n = 1; n < nstep; ++n) {
         rhs(yn, dydxt, x);
-        for (size_t i = 0; i < y.size(); ++i) {
+        for (int i = 0; i < N; ++i) {
             T temp = ym[i] + 2 * h * dydxt[i];
             ym[i] = yn[i];
             yn[i] = temp;
@@ -131,7 +132,7 @@ void modified_midpoint(const three_body_rhs& rhs,
         x += h;
     }
     rhs(yn, dydxt, t + htot);
-    for (size_t i = 0; i < y.size(); ++i) {
+    for (int i = 0; i < N; ++i) {
         yout[i] = 0.5 * (ym[i] + yn[i] + h * dydxt[i]);
     }
 }
@@ -146,12 +147,13 @@ bool bulirsch_stoer_step(const three_body_rhs& rhs,
                          T& h,
                          T rtol,
                          T atol) {
-    const int KMAX = 16;
-    const int nseq[KMAX] = {2, 4, 6, 8, 10, 12, 14, 16,
-                            18, 20, 22, 24, 26, 28, 30, 32};
+    const int KMAX = 24;
+    const int nseq[KMAX] = {
+        2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
+        26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48};
 
     std::array<state_type, KMAX> table;
-    T x[KMAX];
+    std::array<T, KMAX> x;
 
     state_type dydx;
     rhs(y, dydx, t);
@@ -176,7 +178,7 @@ bool bulirsch_stoer_step(const three_body_rhs& rhs,
             // Richardson extrapolation to zero step size
             for (int j = k - 1; j >= 0; --j) {
                 T factor = x[k] / x[j] - 1;
-                for (size_t i = 0; i < y.size(); ++i) {
+                for (int i = 0; i < N; ++i) {
                     table[j][i] = table[j + 1][i] +
                                   (table[j + 1][i] - table[j][i]) / factor;
                 }
@@ -184,15 +186,17 @@ bool bulirsch_stoer_step(const three_body_rhs& rhs,
 
             // Estimate the error from the difference of the last two rows
             state_type yerr;
-            for (size_t i = 0; i < y.size(); ++i) {
+            for (int i = 0; i < N; ++i) {
                 yerr[i] = table[0][i] - table[1][i];
             }
 
             // Compute maximum normalized error
             T errmax = 0;
-            for (size_t i = 0; i < y.size(); ++i) {
-                T sc = atol + rtol * std::max(fabsq(table[0][i]), fabsq(table[1][i]));
-                T err = fabsq(yerr[i] / sc);
+            for (int i = 0; i < N; ++i) {
+                T a0 = fabsq(table[0][i]);
+                T a1 = fabsq(table[1][i]);
+                T sc = atol + rtol * fmaxq(a0, a1);
+                T err = fabsq(yerr[i]) / sc;
                 if (err > errmax) {
                     errmax = err;
                 }
