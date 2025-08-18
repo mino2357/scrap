@@ -12,5 +12,11 @@ $\ge 10$) capture the dynamics accurately. The program writes positions to
 ## Run
 
 ```
-GNUTERM=qt make run  # set GNUTERM=dumb for ASCII in a terminal
+make run
+```
+
+Start gnuplot to display the trajectory:
+
+```
+GNUTERM=qt gnuplot plot.gp  # set GNUTERM=dumb for ASCII output in a terminal
 ```
