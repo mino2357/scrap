@@ -1,6 +1,6 @@
 .RECIPEPREFIX := >
 CXX=g++
-CXXFLAGS=-std=c++17 -O2 -Wall -Wextra
+CXXFLAGS=-std=c++17 -Ofast -march=native -funroll-loops -fomit-frame-pointer -Wall -Wextra
 LDLIBS=-lquadmath
 TARGET=three_body
 SOURCES=main.cpp
