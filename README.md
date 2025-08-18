@@ -67,7 +67,7 @@ inlet and zero‑gradient at the outlet.
 ## case03: dimensionless porous reactor
 
 `case03` nondimensionalises the previous model using length $L$, velocity $u$
-and concentration scale $C_0`. Dimensionless groups include
+and concentration scale $C_0$. Dimensionless groups include
 
 ```math
 \mathrm{Pe}_i = \frac{uL}{D_i},\quad
@@ -81,10 +81,17 @@ heats $\chi_f$ and $\chi_s$. The dimensionless species and energy equations
 mirror those of case02 but in scaled variables $\hat{x}$, $\hat{t}$, $\hat{c}_i$ and
 $\hat{T}_{f,s}$.
 
+## case05: Pythagorean three-body problem
+
+`case05` integrates Burrau's Pythagorean three-body problem using GCC's
+quad-precision floating point type (`__float128`) and a custom Bulirsch–Stoer
+solver with adaptive time stepping (effective order $\ge 10$). Bodies of masses
+3, 4, and 5 start at rest at the corners of a 3‑4‑5 triangle and the program
+saves their positions in `case05.dat` for later analysis.
+
 ## Utilities
 
 The scripts `chemkin_to_md.py` and `chemkin_to_graph.py` help document CHEMKIN
 reaction mechanisms. The former renders the `REACTIONS` block in a Markdown
 list, while the latter builds a Graphviz graph of species connectivity. PNG
 output from `chemkin_to_graph.py` requires the Graphviz `dot` executable.
-
