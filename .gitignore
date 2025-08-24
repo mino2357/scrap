@@ -42,3 +42,7 @@ settings.json
 
 # keep thermodynamic data
 !case04/therm.dat
+
+# Rust
+target/
+**/*.rs.bk
