@@ -64,3 +64,21 @@ fn cip_b_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/cip_b.yaml");
     assert!(l2 < 0.3, "L2 norm too large: {}", l2);
 }
+
+#[test]
+fn cip_csl2_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_csl2.yaml");
+    assert!(l2 < 0.31, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_csl2_mh_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_csl2_mh.yaml");
+    assert!(l2 < 0.31, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn mp5_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/mp5.yaml");
+    assert!(l2 < 0.17, "L2 norm too large: {}", l2);
+}
