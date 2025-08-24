@@ -1,6 +1,6 @@
 use crate::config::{Config, SchemeType, VelocityCfg};
 use crate::render::FrameWriter;
-use crate::schemes::{Centered8, Scheme, Weno5Js};
+use crate::schemes::{Centered8, Scheme, TvdMinmod, TvdVanLeer, Upwind1, Weno5Js};
 use crate::shapes::init_field;
 use crate::utils::idx;
 use anyhow::Result;
@@ -73,6 +73,9 @@ pub fn run(cfg: Config) -> Result<RunStats> {
     let scheme_box: Box<dyn Scheme> = match cfg.scheme.r#type {
         SchemeType::Centered8 => Box::new(Centered8),
         SchemeType::Weno5 => Box::new(Weno5Js),
+        SchemeType::Upwind1 => Box::new(Upwind1),
+        SchemeType::TvdMinmod => Box::new(TvdMinmod),
+        SchemeType::TvdVanLeer => Box::new(TvdVanLeer),
     };
 
     let mut writer = FrameWriter::new(cfg.output.clone(), nx, ny)?;
