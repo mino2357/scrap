@@ -91,6 +91,9 @@ pub enum SchemeType {
     Cip,
     CipCsl,
     CipB,
+    CipCsl2,
+    CipCsl2Mh,
+    Mp5,
     TvdMinmod,
     TvdVanLeer,
 }
