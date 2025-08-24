@@ -6,7 +6,7 @@ This program solves the two-dimensional passive scalar advection equation
 \frac{\partial q}{\partial t} + u\frac{\partial q}{\partial x} + v\frac{\partial q}{\partial y} = 0
 ```
 
-with a solid body rotation velocity field. Two finite-difference schemes are
+with a solid body rotation velocity field. Several finite-difference schemes are
 available:
 
 * **Centered8** – eighth-order central derivative
@@ -16,6 +16,9 @@ available:
   ```
 
 * **WENO5** – fifth-order weighted essentially non-oscillatory scheme
+* **Upwind1** – first-order upwind difference
+* **TVD-Minmod**, **TVD-VanLeer** – second-order TVD schemes with flux limiters
+* **CIP**, **CIP-CSL**, **CIP-B** – cubic interpolated propagation schemes
 
   ```math
   \omega_k = \frac{\alpha_k}{\sum_{m=0}^2 \alpha_m},\qquad \alpha_k = \frac{d_k}{(\varepsilon+\beta_k)^2}
@@ -39,7 +42,7 @@ time overlaid in the corner for easier inspection.
 cargo run --release -- --config config.yaml
 ```
 
-Switch scheme by editing `scheme.type` (centered8 / weno5). Frames go to `output.dir`.
+Switch scheme by editing `scheme.type` (centered8 / weno5 / upwind1 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
 
 ## Make video
 ```bash

@@ -16,7 +16,69 @@ fn centered8_l2_below_threshold() {
 }
 
 #[test]
+/// Verify the 5-stage 4th-order SSPRK(5,4) scheme [Spiteri & Ruuth 2002]
+/// integrates the centered8 spatial discretization with acceptable error.
+fn centered8_ssprk54_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/centered8_ssprk54.yaml");
+    assert!(l2 < 0.35, "L2 norm too large: {}", l2);
+}
+
+#[test]
 fn weno5_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/weno5.yaml");
     assert!(l2 < 0.15, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn upwind1_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/upwind1.yaml");
+    assert!(l2 < 0.6, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn tvd_minmod_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/tvd_minmod.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn tvd_vanleer_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/tvd_vanleer.yaml");
+    assert!(l2 < 0.25, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_csl_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_csl.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_b_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_b.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_csl2_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_csl2.yaml");
+    assert!(l2 < 0.31, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_csl2_mh_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_csl2_mh.yaml");
+    assert!(l2 < 0.31, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn mp5_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/mp5.yaml");
+    assert!(l2 < 0.17, "L2 norm too large: {}", l2);
 }
