@@ -5,12 +5,21 @@ use crate::shapes::init_field;
 use crate::utils::idx;
 use anyhow::Result;
 
+#[derive(Debug, Clone, Copy)]
+pub struct RunStats {
+    pub qmin: f64,
+    pub qmax: f64,
+    pub mass0: f64,
+    pub mass1: f64,
+    pub l2: f64,
+}
+
 /// 2 次元スカラー移流方程式を解くメインループ。
 /// 時間積分には Shu & Osher による 3 段の TVD Runge–Kutta 法\[1\]を用いる。
 ///
 /// [1] C.-W. Shu and S. Osher, "Efficient implementation of essentially non-oscillatory
 /// shock-capturing schemes, II", *Journal of Computational Physics*, 83(1), 32-78, 1989.
-pub fn run(cfg: Config) -> Result<()> {
+pub fn run(cfg: Config) -> Result<RunStats> {
     let nx = cfg.simulation.nx;
     let ny = cfg.simulation.ny;
     let lx = cfg.simulation.lx;
@@ -115,9 +124,16 @@ pub fn run(cfg: Config) -> Result<()> {
             l2 += d * d * cell;
         }
     }
+    let stats = RunStats {
+        qmin,
+        qmax,
+        mass0: m0,
+        mass1: m1,
+        l2: l2.sqrt(),
+    };
     println!("# results");
-    println!("min={:.6e} max={:.6e}", qmin, qmax);
-    println!("mass0={:.6e} mass1={:.6e} mass_err={:.6e}", m0, m1, m1 - m0);
-    println!("L2 = {:.6e}", l2.sqrt());
-    Ok(())
+    println!("min={:.6e} max={:.6e}", stats.qmin, stats.qmax);
+    println!("mass0={:.6e} mass1={:.6e} mass_err={:.6e}", stats.mass0, stats.mass1, stats.mass1 - stats.mass0);
+    println!("L2 = {:.6e}", stats.l2);
+    Ok(stats)
 }

@@ -2,14 +2,8 @@ use anyhow::Result;
 use std::env;
 use std::path::PathBuf;
 
-mod config;
-mod utils;
-mod shapes;
-mod render;
-mod schemes;
-mod sim;
-
-use config::Config;
+use convec::config::Config;
+use convec::sim;
 
 fn main() -> Result<()> {
     let mut cfg_path = PathBuf::from("config.yaml");
@@ -22,6 +16,6 @@ fn main() -> Result<()> {
     println!("[info] loading config: {}", cfg_path.display());
     let cfg = Config::from_path(&cfg_path)?;
     println!("[info] {:?}", cfg.summary());
-    sim::run(cfg)?;
+    let _stats = sim::run(cfg)?;
     Ok(())
 }
