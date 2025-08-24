@@ -1,5 +1,39 @@
 # Zalesak DNC (Rust + YAML)
 
+This program solves the two-dimensional passive scalar advection equation
+
+```math
+\frac{\partial q}{\partial t} + u\frac{\partial q}{\partial x} + v\frac{\partial q}{\partial y} = 0
+```
+
+with a solid body rotation velocity field. Two finite-difference schemes are
+available:
+
+* **Centered8** – eighth-order central derivative
+
+  ```math
+  \frac{\partial f}{\partial x}\Big|_i \approx \frac{1}{280\Delta x}(-3 f_{i-4}+32 f_{i-3}-168 f_{i-2}+672 f_{i-1}-672 f_{i+1}+168 f_{i+2}-32 f_{i+3}+3 f_{i+4})
+  ```
+
+* **WENO5** – fifth-order weighted essentially non-oscillatory scheme
+
+  ```math
+  \omega_k = \frac{\alpha_k}{\sum_{m=0}^2 \alpha_m},\qquad \alpha_k = \frac{d_k}{(\varepsilon+\beta_k)^2}
+  ```
+
+Time integration uses the third-order TVD Runge–Kutta method of Shu and Osher:
+
+```math
+\begin{aligned}
+q^{(1)} &= q^n + \Delta t\,L(q^n),\\
+q^{(2)} &= \tfrac{3}{4} q^n + \tfrac{1}{4}\big(q^{(1)} + \Delta t\,L(q^{(1)})\big),\\
+q^{n+1} &= \tfrac{1}{3} q^n + \tfrac{2}{3}\big(q^{(2)} + \Delta t\,L(q^{(2)})\big).
+\end{aligned}
+```
+
+Frames are saved with a colour bar, thicker axes, and the current simulation
+time overlaid in the corner for easier inspection.
+
 ## Build & Run
 ```bash
 cargo run --release -- --config config.yaml

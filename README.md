@@ -81,6 +81,15 @@ heats $\chi_f$ and $\chi_s$. The dimensionless species and energy equations
 mirror those of case02 but in scaled variables $\hat{x}$, $\hat{t}$, $\hat{c}_i$ and
 $\hat{T}_{f,s}$.
 
+## convec: 2‑D scalar advection
+
+`convec` tracks the rotation of Zalesak's disk under a prescribed velocity
+field. Spatial derivatives use either an eighth‑order centred scheme or the
+fifth‑order WENO method, while time marching employs a three‑stage TVD
+Runge–Kutta integrator. The program writes PNG frames with the current time,
+colour bar and labelled axes for later animation. Further details and build
+instructions live in `convec/README.md`.
+
 ## case05: Pythagorean three-body problem
 
 `case05` integrates Burrau's Pythagorean three-body problem using GCC's

@@ -39,7 +39,7 @@ output:
   interp: bilinear
   grid: true
   grid_step: 8
-  grid_thick: 1
+  grid_thick: 2
   axes: true
   colormap: turbo
   colorbar: true
