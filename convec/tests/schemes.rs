@@ -20,3 +20,21 @@ fn weno5_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/weno5.yaml");
     assert!(l2 < 0.15, "L2 norm too large: {}", l2);
 }
+
+#[test]
+fn upwind1_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/upwind1.yaml");
+    assert!(l2 < 0.6, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn tvd_minmod_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/tvd_minmod.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn tvd_vanleer_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/tvd_vanleer.yaml");
+    assert!(l2 < 0.25, "L2 norm too large: {}", l2);
+}
