@@ -126,7 +126,8 @@ impl FrameWriter {
             );
         }
         if self.cfg.axes {
-            draw_rect(&mut buf, w, h, 0, 0, w - 1, h - 1, 3, [0, 0, 0]);
+            // draw a thicker rectangle around the domain to emphasise axes
+            draw_rect(&mut buf, w, h, 0, 0, w - 1, h - 1, 5, [0, 0, 0]);
         }
         // overlay current time in seconds at top-left
         let label = format!("t = {:.12}", time);
@@ -185,17 +186,25 @@ fn draw_grid(
     thick: usize,
     color: [u8; 3],
 ) {
+    let dash = 5usize;
+    let gap = 5usize;
+
     // 垂直線
     for k in (0..=nx).step_by(step) {
         let mut xpix = ((k as f64) * (w as f64) / (nx as f64)).round() as usize;
         if xpix >= w {
             xpix = w - 1;
         }
-        for y in 0..h {
-            for t in 0..thick {
-                let x = xpix.saturating_add(t).min(w - 1);
-                set_px(buf, w, h, x, y, color);
+        let mut y = 0usize;
+        while y < h {
+            let y_end = (y + dash).min(h);
+            for yy in y..y_end {
+                for t in 0..thick {
+                    let x = xpix.saturating_add(t).min(w - 1);
+                    set_px(buf, w, h, x, yy, color);
+                }
             }
+            y += dash + gap;
         }
     }
     // 水平線
@@ -204,11 +213,16 @@ fn draw_grid(
         if ypix >= h {
             ypix = h - 1;
         }
-        for x in 0..w {
-            for t in 0..thick {
-                let y = ypix.saturating_add(t).min(h - 1);
-                set_px(buf, w, h, x, y, color);
+        let mut x0 = 0usize;
+        while x0 < w {
+            let x_end = (x0 + dash).min(w);
+            for xx in x0..x_end {
+                for t in 0..thick {
+                    let y = ypix.saturating_add(t).min(h - 1);
+                    set_px(buf, w, h, xx, y, color);
+                }
             }
+            x0 += dash + gap;
         }
     }
 }
