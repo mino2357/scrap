@@ -46,3 +46,21 @@ fn tvd_vanleer_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/tvd_vanleer.yaml");
     assert!(l2 < 0.25, "L2 norm too large: {}", l2);
 }
+
+#[test]
+fn cip_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_csl_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_csl.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn cip_b_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/cip_b.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}

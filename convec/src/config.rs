@@ -88,6 +88,9 @@ pub enum SchemeType {
     Centered8,
     Weno5,
     Upwind1,
+    Cip,
+    CipCsl,
+    CipB,
     TvdMinmod,
     TvdVanLeer,
 }

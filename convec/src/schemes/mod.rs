@@ -13,10 +13,12 @@ pub trait Scheme {
 }
 
 pub mod centered8;
+pub mod cip;
 pub mod tvd;
 pub mod upwind1;
 pub mod weno5;
 pub use centered8::Centered8;
+pub use cip::{Cip, CipB, CipCsl};
 pub use tvd::{TvdMinmod, TvdVanLeer};
 pub use upwind1::Upwind1;
 pub use weno5::Weno5Js;
