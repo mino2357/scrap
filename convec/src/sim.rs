@@ -1,4 +1,4 @@
-use crate::config::{Config, SchemeType, VelocityCfg};
+use crate::config::{Config, SchemeType, TimeIntegrator, VelocityCfg};
 use crate::render::FrameWriter;
 use crate::schemes::{Centered8, Scheme, TvdMinmod, TvdVanLeer, Upwind1, Weno5Js};
 use crate::shapes::init_field;
@@ -15,10 +15,16 @@ pub struct RunStats {
 }
 
 /// 2 次元スカラー移流方程式を解くメインループ。
-/// 時間積分には Shu & Osher による 3 段の TVD Runge–Kutta 法\[1\]を用いる。
+/// 時間積分には強安定性保存 (SSP) Runge–Kutta 法を用い，設定により
+/// 次のいずれかを選択できる：
+/// - 3 段 3 次の SSPRK(3,3) 法\[1\]
+/// - 5 段 4 次の SSPRK(5,4) 法\[2\]
 ///
 /// [1] C.-W. Shu and S. Osher, "Efficient implementation of essentially non-oscillatory
 /// shock-capturing schemes, II", *Journal of Computational Physics*, 83(1), 32-78, 1989.
+/// [2] R. J. Spiteri and S. J. Ruuth, "A new class of optimal high-order
+/// strong-stability-preserving time discretization methods", *SIAM Journal on
+/// Numerical Analysis*, 40(2), 469-491, 2002.
 pub fn run(cfg: Config) -> Result<RunStats> {
     let nx = cfg.simulation.nx;
     let ny = cfg.simulation.ny;
@@ -86,21 +92,65 @@ pub fn run(cfg: Config) -> Result<RunStats> {
     let mut rhs = vec![0.0; nx * ny];
     let mut q1 = vec![0.0; nx * ny];
     let mut q2 = vec![0.0; nx * ny];
+    let mut q3 = vec![0.0; nx * ny];
+    let mut q4 = vec![0.0; nx * ny];
+
+    let integrator = cfg.simulation.time_integrator;
 
     for n in 1..=steps {
-        scheme_box.rhs(&q, &u, &v, dx, dy, nx, ny, &mut rhs);
-        for k in 0..nx * ny {
-            q1[k] = q[k] + dt * rhs[k];
-        }
+        match integrator {
+            TimeIntegrator::SspRk3 => {
+                // SSPRK(3,3) [1]:
+                // q^(1) = q^n + dt * L(q^n)
+                scheme_box.rhs(&q, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q1[k] = q[k] + dt * rhs[k];
+                }
 
-        scheme_box.rhs(&q1, &u, &v, dx, dy, nx, ny, &mut rhs);
-        for k in 0..nx * ny {
-            q2[k] = 0.75 * q[k] + 0.25 * (q1[k] + dt * rhs[k]);
-        }
+                // q^(2) = 3/4 q^n + 1/4 (q^(1) + dt * L(q^(1)))
+                scheme_box.rhs(&q1, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q2[k] = 0.75 * q[k] + 0.25 * (q1[k] + dt * rhs[k]);
+                }
 
-        scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
-        for k in 0..nx * ny {
-            q[k] = (1.0 / 3.0) * q[k] + (2.0 / 3.0) * (q2[k] + dt * rhs[k]);
+                // q^{n+1} = 1/3 q^n + 2/3 (q^(2) + dt * L(q^(2)))
+                scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q[k] = (1.0 / 3.0) * q[k] + (2.0 / 3.0) * (q2[k] + dt * rhs[k]);
+                }
+            }
+            TimeIntegrator::SspRk54 => {
+                // SSPRK(5,4) [2]:
+                // q^(1) = q^n + dt * L(q^n)
+                scheme_box.rhs(&q, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q1[k] = q[k] + dt * rhs[k];
+                }
+
+                // q^(2) = q^(1) + dt * L(q^(1))
+                scheme_box.rhs(&q1, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q2[k] = q1[k] + dt * rhs[k];
+                }
+
+                // q^(3) = 3/4 q^n + 1/4 (q^(2) + dt * L(q^(2)))
+                scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q3[k] = 0.75 * q[k] + 0.25 * (q2[k] + dt * rhs[k]);
+                }
+
+                // q^(4) = q^(3) + dt * L(q^(3))
+                scheme_box.rhs(&q3, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q4[k] = q3[k] + dt * rhs[k];
+                }
+
+                // q^{n+1} = 1/3 q^n + 2/3 (q^(4) + dt * L(q^(4)))
+                scheme_box.rhs(&q4, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q[k] = (1.0 / 3.0) * q[k] + (2.0 / 3.0) * (q4[k] + dt * rhs[k]);
+                }
+            }
         }
 
         writer.maybe_write(&q, n, n as f64 * dt)?;

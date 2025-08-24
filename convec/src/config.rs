@@ -21,8 +21,9 @@ impl Config {
     }
     pub fn summary(&self) -> String {
         format!(
-            "scheme={:?}, N=({},{}) CFL={} ROT={} out_dir={} stride={} fmt={:?}",
+            "scheme={:?}, time_int={:?}, N=({},{}) CFL={} ROT={} out_dir={} stride={} fmt={:?}",
             self.scheme.r#type,
+            self.simulation.time_integrator,
             self.simulation.nx,
             self.simulation.ny,
             self.simulation.cfl,
@@ -44,6 +45,8 @@ pub struct SimulationCfg {
     pub cfl: f64,
     pub rotations: usize,
     pub velocity: VelocityCfg,
+    #[serde(default)]
+    pub time_integrator: TimeIntegrator,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -87,6 +90,24 @@ pub enum SchemeType {
     Upwind1,
     TvdMinmod,
     TvdVanLeer,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+/// Strong-stability-preserving Runge–Kutta time integrators.
+/// - `SspRk3`: 3-stage 3rd-order scheme of Shu & Osher (1989).
+/// - `SspRk54`: 5-stage 4th-order scheme of Spiteri & Ruuth (2002).
+pub enum TimeIntegrator {
+    /// SSPRK(3,3)
+    SspRk3,
+    /// SSPRK(5,4)
+    SspRk54,
+}
+
+impl Default for TimeIntegrator {
+    fn default() -> Self {
+        TimeIntegrator::SspRk3
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
