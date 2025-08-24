@@ -77,7 +77,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
 
     let mut writer = FrameWriter::new(cfg.output.clone(), nx, ny)?;
     if writer.cfg.enable {
-        writer.write_frame(&q, 0)?;
+        writer.write_frame(&q, 0.0)?;
     }
 
     let mut rhs = vec![0.0; nx * ny];
@@ -100,7 +100,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
             q[k] = (1.0 / 3.0) * q[k] + (2.0 / 3.0) * (q2[k] + dt * rhs[k]);
         }
 
-        writer.maybe_write(&q, n)?;
+        writer.maybe_write(&q, n, n as f64 * dt)?;
     }
 
     let cell = dx * dy;
@@ -133,7 +133,12 @@ pub fn run(cfg: Config) -> Result<RunStats> {
     };
     println!("# results");
     println!("min={:.6e} max={:.6e}", stats.qmin, stats.qmax);
-    println!("mass0={:.6e} mass1={:.6e} mass_err={:.6e}", stats.mass0, stats.mass1, stats.mass1 - stats.mass0);
+    println!(
+        "mass0={:.6e} mass1={:.6e} mass_err={:.6e}",
+        stats.mass0,
+        stats.mass1,
+        stats.mass1 - stats.mass0
+    );
     println!("L2 = {:.6e}", stats.l2);
     Ok(stats)
 }
