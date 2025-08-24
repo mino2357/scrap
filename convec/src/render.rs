@@ -129,8 +129,8 @@ impl FrameWriter {
             // draw a thicker rectangle around the domain to emphasise axes
             draw_rect(&mut buf, w, h, 0, 0, w - 1, h - 1, 5, [0, 0, 0]);
         }
-        // overlay current time in seconds at top-left with higher precision
-        let label = format!("t = {:.10}", time);
+        // overlay current time in seconds at top-left
+        let label = format!("t = {:.12}", time);
         draw_time_label(&mut buf, w, h, &label);
         if self.cfg.colorbar {
             draw_colorbar(&mut buf, w, h, self.cfg.colormap);
