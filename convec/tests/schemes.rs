@@ -28,9 +28,15 @@ fn centered12_l2_below_threshold() {
 }
 
 #[test]
-fn centered2d_l2_below_threshold() {
-    let l2 = run_and_get_l2("tests/centered2d.yaml");
+fn centered3x3_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/centered3x3.yaml");
     assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn centered4x4_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/centered4x4.yaml");
+    assert!(l2 < 3.0, "L2 norm too large: {}", l2);
 }
 
 #[test]
@@ -66,8 +72,8 @@ fn upwind1_l2_below_threshold() {
 }
 
 #[test]
-fn upwind2d_l2_below_threshold() {
-    let l2 = run_and_get_l2("tests/upwind2d.yaml");
+fn upwind3x3_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/upwind3x3.yaml");
     assert!(l2 < 0.6, "L2 norm too large: {}", l2);
 }
 

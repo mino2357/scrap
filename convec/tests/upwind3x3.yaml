@@ -20,7 +20,7 @@ initial_condition:
   slot_length: 0.26
 
 scheme:
-  type: upwind2d
+  type: upwind3x3
 
 output:
   enable: false

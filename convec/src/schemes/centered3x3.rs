@@ -4,9 +4,9 @@ use crate::utils::{idx, pid};
 /// Second-order central difference scheme with a 3x3 stencil.
 /// This scheme approximates the spatial derivatives using a two-dimensional
 /// Simpson rule, incorporating diagonal neighbours for improved isotropy.
-pub struct Centered2d;
+pub struct Centered3x3;
 
-impl Scheme for Centered2d {
+impl Scheme for Centered3x3 {
     fn rhs(
         &self,
         q: &[f64],

@@ -4,9 +4,9 @@ use crate::utils::{idx, pid};
 /// First-order upwind scheme with a 3x3 stencil.
 /// The derivative is evaluated with a two-dimensional Simpson rule
 /// taken in the upwind direction, using diagonal information as well.
-pub struct Upwind2d;
+pub struct Upwind3x3;
 
-impl Scheme for Upwind2d {
+impl Scheme for Upwind3x3 {
     fn rhs(
         &self,
         q: &[f64],
