@@ -28,6 +28,12 @@ fn centered12_l2_below_threshold() {
 }
 
 #[test]
+fn centered2d_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/centered2d.yaml");
+    assert!(l2 < 0.3, "L2 norm too large: {}", l2);
+}
+
+#[test]
 /// Verify the 5-stage 4th-order SSPRK(5,4) scheme [Spiteri & Ruuth 2002]
 /// integrates the centered8 spatial discretization with acceptable error.
 fn centered8_ssprk54_l2_below_threshold() {
@@ -56,6 +62,12 @@ fn weno7_z_l2_below_threshold() {
 #[test]
 fn upwind1_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/upwind1.yaml");
+    assert!(l2 < 0.6, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn upwind2d_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/upwind2d.yaml");
     assert!(l2 < 0.6, "L2 norm too large: {}", l2);
 }
 
