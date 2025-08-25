@@ -23,6 +23,7 @@ available:
 
 * **Centered10** – tenth-order central derivative
 * **Centered12** – twelfth-order central derivative
+* **Centered14** – fourteenth-order central derivative
 * **WENO5** – fifth-order weighted essentially non-oscillatory scheme
 * **WENO5-Z** – improved fifth-order WENO using Z-type weights
 * **WENO7-Z** – seventh-order WENO with Z-type weights
