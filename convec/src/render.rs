@@ -105,6 +105,7 @@ impl FrameWriter {
                         (c, c, c)
                     }
                     Colormap::Turbo => turbo_rgb(norm),
+                    Colormap::Jet => jet_rgb(norm),
                 };
                 let yy = if self.cfg.flip_y { h - 1 - py } else { py };
                 let p = (yy * w + px) * 3;
@@ -246,6 +247,7 @@ fn draw_colorbar(buf: &mut [u8], w: usize, h: usize, cmap: Colormap) {
                 (c, c, c)
             }
             Colormap::Turbo => turbo_rgb(t),
+            Colormap::Jet => jet_rgb(t),
         };
         for x in x0..w {
             let p = (y * w + x) * 3;
@@ -262,6 +264,15 @@ fn turbo_rgb(t: f64) -> (u8, u8, u8) {
     let g = 23.31 + x * (557.33 + x * (1225.33 + x * (-3574.96 + x * (4520.31 + x * (-1974.13)))));
     let b = 27.2 + x * (321.15 + x * (1537.82 + x * (-4579.07 + x * (5496.05 + x * (-2163.56)))));
     let to8 = |v: f64| -> u8 { v.round().clamp(0.0, 255.0) as u8 };
+    (to8(r), to8(g), to8(b))
+}
+
+fn jet_rgb(t: f64) -> (u8, u8, u8) {
+    let x = t.clamp(0.0, 1.0);
+    let r = (1.5 - (4.0 * x - 3.0).abs()).clamp(0.0, 1.0);
+    let g = (1.5 - (4.0 * x - 2.0).abs()).clamp(0.0, 1.0);
+    let b = (1.5 - (4.0 * x - 1.0).abs()).clamp(0.0, 1.0);
+    let to8 = |v: f64| -> u8 { (v * 255.0).round().clamp(0.0, 255.0) as u8 };
     (to8(r), to8(g), to8(b))
 }
 

@@ -37,9 +37,9 @@ output:
   out_w: 1000
   out_h: 1000
   interp: bilinear
-  grid: true
+  grid: false
   grid_step: 8
   grid_thick: 2
   axes: true
-  colormap: turbo
+  colormap: jet
   colorbar: true

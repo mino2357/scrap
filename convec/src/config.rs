@@ -132,11 +132,16 @@ pub struct OutputCfg {
     pub out_w: Option<usize>,
     pub out_h: Option<usize>,
     pub interp: Interp,
+    #[serde(default)]
     pub grid: bool,
+    #[serde(default = "default_grid_step")]
     pub grid_step: usize,
+    #[serde(default = "default_grid_thick")]
     pub grid_thick: usize,
     pub axes: bool,
+    #[serde(default)]
     pub colormap: Colormap,
+    #[serde(default)]
     pub colorbar: bool,
 }
 
@@ -166,4 +171,19 @@ pub enum Interp {
 pub enum Colormap {
     Gray,
     Turbo,
+    Jet,
+}
+
+impl Default for Colormap {
+    fn default() -> Self {
+        Colormap::Jet
+    }
+}
+
+fn default_grid_step() -> usize {
+    8
+}
+
+fn default_grid_thick() -> usize {
+    1
 }
