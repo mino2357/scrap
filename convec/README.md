@@ -18,6 +18,8 @@ available:
   ```
 
 * **WENO5** – fifth-order weighted essentially non-oscillatory scheme
+* **WENO5-Z** – improved fifth-order WENO using Z-type weights
+* **WENO7-Z** – seventh-order WENO with Z-type weights
 * **Upwind1** – first-order upwind difference
 * **TVD-Minmod**, **TVD-VanLeer** – second-order TVD schemes with flux limiters
 * **CIP**, **CIP-CSL**, **CIP-B** – cubic interpolated propagation schemes
