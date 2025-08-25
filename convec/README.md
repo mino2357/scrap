@@ -27,6 +27,7 @@ available:
 * **WENO5** – fifth-order weighted essentially non-oscillatory scheme
 * **WENO5-Z** – improved fifth-order WENO using Z-type weights
 * **WENO7-Z** – seventh-order WENO with Z-type weights
+* **WENO9-Z** – ninth-order WENO with Z-type weights
 * **Upwind1** – first-order upwind difference
 * **Upwind3x3** – first-order upwind difference with a 3×3 stencil
 

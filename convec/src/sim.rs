@@ -5,6 +5,7 @@ use crate::render::FrameWriter;
 use crate::schemes::{
     Centered6, Centered8, Centered10, Centered12, Centered14, Cip, CipB, CipCsl, CipCsl2,
     CipCsl2Mh, Mp5, Scheme, TvdMinmod, TvdVanLeer, Upwind1, Upwind3x3, Weno5Js, Weno5Z, Weno7Z,
+    Weno9Z,
 };
 use crate::shapes::init_field;
 use crate::utils::idx;
@@ -95,6 +96,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
         SchemeType::Weno5 => Box::new(Weno5Js),
         SchemeType::Weno5Z => Box::new(Weno5Z),
         SchemeType::Weno7Z => Box::new(Weno7Z),
+        SchemeType::Weno9Z => Box::new(Weno9Z),
         SchemeType::Upwind1 => Box::new(Upwind1),
         SchemeType::Upwind3x3 => Box::new(Upwind3x3),
         SchemeType::Cip => Box::new(Cip),

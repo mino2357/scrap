@@ -110,6 +110,7 @@ pub enum SchemeType {
     Weno5,
     Weno5Z,
     Weno7Z,
+    Weno9Z,
     Upwind1,
     Upwind3x3,
     Cip,
