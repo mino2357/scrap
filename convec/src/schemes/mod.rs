@@ -14,6 +14,7 @@ pub trait Scheme {
 
 pub mod centered10;
 pub mod centered12;
+pub mod centered14;
 pub mod centered6;
 pub mod centered8;
 pub mod cip;
@@ -28,6 +29,7 @@ pub use centered6::Centered6;
 pub use centered8::Centered8;
 pub use centered10::Centered10;
 pub use centered12::Centered12;
+pub use centered14::Centered14;
 pub use cip::{Cip, CipB, CipCsl, CipCsl2, CipCsl2Mh};
 pub use mp5::Mp5;
 pub use tvd::{TvdMinmod, TvdVanLeer};
