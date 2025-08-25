@@ -8,14 +8,21 @@ use crate::utils::{idx, pid};
 
 pub struct Centered6;
 
+/// Finite-difference weights for the first derivative.
+///
+/// The original implementation used the negative of these coefficients, which
+/// effectively flipped the sign of the computed derivative. As a consequence
+/// the advection term produced a reversed rotation compared to the expected
+/// behaviour.  The signs have been corrected so that a linear field yields the
+/// proper positive gradient.
 const C6: [f64; 7] = [
-    1.0 / 60.0,
-    -3.0 / 20.0,
-    3.0 / 4.0,
-    0.0,
-    -3.0 / 4.0,
-    3.0 / 20.0,
     -1.0 / 60.0,
+    3.0 / 20.0,
+    -3.0 / 4.0,
+    0.0,
+    3.0 / 4.0,
+    -3.0 / 20.0,
+    1.0 / 60.0,
 ];
 
 fn d1x(f: &[f64], nx: usize, ny: usize, dx: f64, out: &mut [f64]) {
