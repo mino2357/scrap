@@ -12,6 +12,7 @@ available:
 * **Centered8** – eighth-order central derivative
 * **Centered10** – tenth-order central derivative
 * **Centered12** – twelfth-order central derivative
+* **Centered2d** – second-order central derivative using a 3×3 stencil
 
   ```math
   \frac{\partial f}{\partial x}\Big|_i \approx \frac{1}{280\Delta x}(-3 f_{i-4}+32 f_{i-3}-168 f_{i-2}+672 f_{i-1}-672 f_{i+1}+168 f_{i+2}-32 f_{i+3}+3 f_{i+4})
@@ -21,6 +22,7 @@ available:
 * **WENO5-Z** – improved fifth-order WENO using Z-type weights
 * **WENO7-Z** – seventh-order WENO with Z-type weights
 * **Upwind1** – first-order upwind difference
+* **Upwind2d** – first-order upwind difference with a 3×3 stencil
 * **TVD-Minmod**, **TVD-VanLeer** – second-order TVD schemes with flux limiters
 * **CIP**, **CIP-CSL**, **CIP-B** – cubic interpolated propagation schemes
 
