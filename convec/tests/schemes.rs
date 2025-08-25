@@ -16,6 +16,12 @@ fn centered8_l2_below_threshold() {
 }
 
 #[test]
+fn centered6_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/centered6.yaml");
+    assert!(l2 < 0.2, "L2 norm too large: {}", l2);
+}
+
+#[test]
 fn centered10_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/centered10.yaml");
     assert!(l2 < 0.15, "L2 norm too large: {}", l2);
