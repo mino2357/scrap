@@ -1,3 +1,5 @@
+//! シミュレーションのメインルーチン。
+
 use crate::config::{Config, SchemeType, TimeIntegrator, VelocityCfg};
 use crate::render::FrameWriter;
 use crate::schemes::{
@@ -33,9 +35,11 @@ pub fn run(cfg: Config) -> Result<RunStats> {
     let ny = cfg.simulation.ny;
     let lx = cfg.simulation.lx;
     let ly = cfg.simulation.ly;
+    // 格子幅。正方形格子を仮定
     let dx = lx / nx as f64;
     let dy = ly / ny as f64;
 
+    // 格子中心座標を計算しておく。
     let mut x = vec![0.0; nx];
     let mut y = vec![0.0; ny];
     for i in 0..nx {
@@ -47,6 +51,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
 
     let mut u = vec![0.0; nx * ny];
     let mut v = vec![0.0; nx * ny];
+    // 設定に従い速度場を生成。現在は剛体回転のみをサポート。
     match cfg.simulation.velocity {
         VelocityCfg::SolidRotation {
             omega,
@@ -66,6 +71,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
     let mut q = init_field(&cfg.initial_condition, nx, ny, lx, ly);
     let q0 = q.clone();
 
+    // 速度の最大値から時間刻み幅を決定
     let mut umax = 0.0;
     for k in 0..nx * ny {
         let s = (u[k] * u[k] + v[k] * v[k]).sqrt();
@@ -74,6 +80,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
         }
     }
     let mut dt = cfg.simulation.cfl * dx.min(dy) / (umax + 1e-15);
+    // 1 回転を単位時間として終了時刻を決定
     let t_end = cfg.simulation.rotations as f64;
     let steps = (t_end / dt).ceil() as usize;
     dt = t_end / steps as f64;
@@ -101,6 +108,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
 
     let mut writer = FrameWriter::new(cfg.output.clone(), nx, ny)?;
     if writer.cfg.enable {
+        // 初期状態の画像も出力しておく
         writer.write_frame(&q, 0.0)?;
     }
 
