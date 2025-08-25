@@ -14,8 +14,6 @@ pub trait Scheme {
 
 pub mod centered10;
 pub mod centered12;
-pub mod centered3x3;
-pub mod centered4x4;
 pub mod centered6;
 pub mod centered8;
 pub mod cip;
@@ -26,8 +24,6 @@ pub mod upwind3x3;
 pub mod weno5;
 pub mod weno5z;
 pub mod weno7z;
-pub use centered3x3::Centered3x3;
-pub use centered4x4::Centered4x4;
 pub use centered6::Centered6;
 pub use centered8::Centered8;
 pub use centered10::Centered10;
