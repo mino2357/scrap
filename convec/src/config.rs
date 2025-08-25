@@ -89,6 +89,8 @@ pub enum SchemeType {
     Centered10,
     Centered12,
     Weno5,
+    Weno5Z,
+    Weno7Z,
     Upwind1,
     Cip,
     CipCsl,

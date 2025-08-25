@@ -42,6 +42,18 @@ fn weno5_l2_below_threshold() {
 }
 
 #[test]
+fn weno5_z_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/weno5_z.yaml");
+    assert!(l2 < 0.13, "L2 norm too large: {}", l2);
+}
+
+#[test]
+fn weno7_z_l2_below_threshold() {
+    let l2 = run_and_get_l2("tests/weno7_z.yaml");
+    assert!(l2 < 0.17, "L2 norm too large: {}", l2);
+}
+
+#[test]
 fn upwind1_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/upwind1.yaml");
     assert!(l2 < 0.6, "L2 norm too large: {}", l2);
