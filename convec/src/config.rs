@@ -121,6 +121,13 @@ pub enum SchemeType {
     Mp5,
     TvdMinmod,
     TvdVanLeer,
+    Teno6,
+    #[serde(rename = "teno7a")]
+    Teno7A,
+    #[serde(rename = "teno8a")]
+    Teno8A,
+    #[serde(rename = "teno9a")]
+    Teno9A,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]

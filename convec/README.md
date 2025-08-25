@@ -28,6 +28,10 @@ available:
 * **WENO5-Z** – improved fifth-order WENO using Z-type weights
 * **WENO7-Z** – seventh-order WENO with Z-type weights
 * **WENO9-Z** – ninth-order WENO with Z-type weights
+* **TENO6** – sixth-order targeted essentially non-oscillatory scheme
+* **TENO7-A** – seventh-order TENO variant A
+* **TENO8-A** – eighth-order TENO variant A
+* **TENO9-A** – ninth-order TENO variant A
 * **Upwind1** – first-order upwind difference
 * **Upwind3x3** – first-order upwind difference with a 3×3 stencil
 
@@ -65,7 +69,7 @@ disabled by default, and the colour map defaults to `jet` (also supporting
 cargo run --release -- --config config.yaml
 ```
 
-Switch scheme by editing `scheme.type` (centered6 / centered8 / centered10 / centered12 / weno5 / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
+Switch scheme by editing `scheme.type` (centered6 / centered8 / centered10 / centered12 / weno5 / weno5_z / weno7_z / weno9_z / teno6 / teno7a / teno8a / teno9a / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
 
 ## Make video
 ```bash
