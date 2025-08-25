@@ -1,3 +1,5 @@
+//! 計算結果を画像として保存するためのレンダリングモジュール。
+
 use crate::config::{Colormap, Interp, OutFmt, OutputCfg, ScaleCfg};
 use crate::utils::{idx, pid};
 use anyhow::{Context, Result};
@@ -6,7 +8,9 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
+/// シミュレーションの各ステップを画像へ出力するヘルパ。
 pub struct FrameWriter {
+    /// 出力に関する設定
     pub cfg: OutputCfg,
     nx: usize,
     ny: usize,
@@ -14,6 +18,7 @@ pub struct FrameWriter {
 }
 
 impl FrameWriter {
+    /// `OutputCfg` をもとに新しい `FrameWriter` を生成する。
     pub fn new(mut cfg: OutputCfg, nx: usize, ny: usize) -> Result<Self> {
         if cfg.enable {
             fs::create_dir_all(&cfg.dir).with_context(|| format!("cannot create {}", cfg.dir))?;
@@ -31,6 +36,8 @@ impl FrameWriter {
             next_id: 0,
         })
     }
+
+    /// 指定されたステップが出力タイミングであればフレームを書き出す。
     pub fn maybe_write(&mut self, q: &Vec<f64>, step: usize, time: f64) -> Result<()> {
         if !self.cfg.enable {
             return Ok(());
@@ -40,6 +47,8 @@ impl FrameWriter {
         }
         Ok(())
     }
+
+    /// 現在のスカラー場 `q` を画像ファイルとして保存する。
     pub fn write_frame(&mut self, q: &Vec<f64>, time: f64) -> Result<()> {
         let id = self.cfg.start_index + self.next_id;
         let fname = format!("{}_{:06}", self.cfg.prefix, id);
