@@ -37,7 +37,9 @@ q^{n+1} &= \tfrac{1}{3} q^n + \tfrac{2}{3}\big(q^{(2)} + \Delta t\,L(q^{(2)})\bi
 ```
 
 Frames are saved with a colour bar, thicker axes, and the current simulation
-time overlaid in the corner for easier inspection.
+time overlaid in the corner for easier inspection. The grid overlay is
+disabled by default, and the colour map defaults to `jet` (also supporting
+`turbo` and `gray`).
 
 ## Build & Run
 ```bash
