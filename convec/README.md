@@ -9,6 +9,12 @@ This program solves the two-dimensional passive scalar advection equation
 with a solid body rotation velocity field. Several finite-difference schemes are
 available:
 
+* **Centered6** – sixth-order central derivative
+
+  ```math
+  \frac{\partial f}{\partial x}\Big|_i \approx \frac{1}{60\Delta x}(f_{i-3}-9 f_{i-2}+45 f_{i-1}-45 f_{i+1}+9 f_{i+2}-f_{i+3})
+  ```
+
 * **Centered8** – eighth-order central derivative
 
   ```math
@@ -69,7 +75,7 @@ disabled by default, and the colour map defaults to `jet` (also supporting
 cargo run --release -- --config config.yaml
 ```
 
-Switch scheme by editing `scheme.type` (centered3x3 / centered4x4 / centered8 / centered10 / centered12 / weno5 / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
+Switch scheme by editing `scheme.type` (centered3x3 / centered4x4 / centered6 / centered8 / centered10 / centered12 / weno5 / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
 
 ## Make video
 ```bash
