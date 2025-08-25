@@ -89,8 +89,6 @@ pub enum SchemeType {
     Centered8,
     Centered10,
     Centered12,
-    Centered3x3,
-    Centered4x4,
     Weno5,
     Weno5Z,
     Weno7Z,

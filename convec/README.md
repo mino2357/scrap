@@ -23,18 +23,6 @@ available:
 
 * **Centered10** – tenth-order central derivative
 * **Centered12** – twelfth-order central derivative
-* **Centered3x3** – second-order central derivative using a 3×3 stencil
-
-  ```math
-  \frac{\partial f}{\partial x}\Big|_{i,j} \approx \frac{f_{i+1,j-1} + 4 f_{i+1,j} + f_{i+1,j+1} - f_{i-1,j-1} - 4 f_{i-1,j} - f_{i-1,j+1}}{6\Delta x}
-  ```
-
-* **Centered4x4** – second-order central derivative using a 4×4 stencil
-
-  ```math
-  \frac{\partial f}{\partial x}\Big|_{i,j} \approx \frac{f_{i+1,j-1} + 3 f_{i+1,j} + 3 f_{i+1,j+1} + f_{i+1,j+2} - f_{i-1,j-2} - 3 f_{i-1,j-1} - 3 f_{i-1,j} - f_{i-1,j+1}}{8\Delta x}
-  ```
-
 * **WENO5** – fifth-order weighted essentially non-oscillatory scheme
 * **WENO5-Z** – improved fifth-order WENO using Z-type weights
 * **WENO7-Z** – seventh-order WENO with Z-type weights
@@ -75,7 +63,7 @@ disabled by default, and the colour map defaults to `jet` (also supporting
 cargo run --release -- --config config.yaml
 ```
 
-Switch scheme by editing `scheme.type` (centered3x3 / centered4x4 / centered6 / centered8 / centered10 / centered12 / weno5 / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
+Switch scheme by editing `scheme.type` (centered6 / centered8 / centered10 / centered12 / weno5 / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
 
 ## Make video
 ```bash
