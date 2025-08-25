@@ -4,8 +4,8 @@ use crate::config::{Config, SchemeType, TimeIntegrator, VelocityCfg};
 use crate::render::FrameWriter;
 use crate::schemes::{
     Centered6, Centered8, Centered10, Centered12, Centered14, Cip, CipB, CipCsl, CipCsl2,
-    CipCsl2Mh, Mp5, Scheme, TvdMinmod, TvdVanLeer, Upwind1, Upwind3x3, Weno5Js, Weno5Z, Weno7Z,
-    Weno9Z,
+    CipCsl2Mh, Mp5, Scheme, Teno6, Teno7A, Teno8A, Teno9A, TvdMinmod, TvdVanLeer, Upwind1,
+    Upwind3x3, Weno5Js, Weno5Z, Weno7Z, Weno9Z,
 };
 use crate::shapes::init_field;
 use crate::utils::idx;
@@ -107,6 +107,10 @@ pub fn run(cfg: Config) -> Result<RunStats> {
         SchemeType::Mp5 => Box::new(Mp5),
         SchemeType::TvdMinmod => Box::new(TvdMinmod),
         SchemeType::TvdVanLeer => Box::new(TvdVanLeer),
+        SchemeType::Teno6 => Box::new(Teno6),
+        SchemeType::Teno7A => Box::new(Teno7A),
+        SchemeType::Teno8A => Box::new(Teno8A),
+        SchemeType::Teno9A => Box::new(Teno9A),
     };
 
     let mut writer = FrameWriter::new(cfg.output.clone(), nx, ny)?;

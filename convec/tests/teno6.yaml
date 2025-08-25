@@ -1,0 +1,45 @@
+simulation:
+  nx: 32
+  ny: 32
+  lx: 1.0
+  ly: 1.0
+  cfl: 0.40
+  rotations: 1
+  velocity:
+    type: solid_rotation
+    omega: 6.283185307179586
+    center_x: 0.5
+    center_y: 0.5
+
+initial_condition:
+  type: zalesak
+  center_x: 0.5
+  center_y: 0.75
+  radius: 0.18
+  slot_width: 0.06
+  slot_length: 0.26
+
+scheme:
+  type: teno6
+
+output:
+  enable: false
+  dir: frames
+  prefix: test
+  format: png
+  stride: 1
+  start_index: 0
+  scale:
+    mode: fixed
+    min: 0.0
+    max: 1.0
+  flip_y: true
+  out_w: 1000
+  out_h: 1000
+  interp: bilinear
+  grid: false
+  grid_step: 8
+  grid_thick: 1
+  axes: false
+  colormap: turbo
+  colorbar: false
