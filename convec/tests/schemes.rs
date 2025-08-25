@@ -22,6 +22,41 @@ fn centered6_l2_below_threshold() {
 }
 
 #[test]
+fn centered6_preserves_rotation_direction() {
+    use convec::schemes::{Centered6, Scheme};
+    use convec::utils::idx;
+
+    // Use a periodic sine wave so that the boundary wrap-around is consistent
+    // with the stencil.  For q = sin(kx) and uniform velocity u = 1, the
+    // semi-discrete advection term becomes -k cos(kx).
+    let nx = 32; // sufficiently large and periodic
+    let ny = 4;
+    let dx = 1.0;
+    let dy = 1.0;
+    let k = 2.0 * std::f64::consts::PI / nx as f64;
+
+    let mut q = vec![0.0; nx * ny];
+    for j in 0..ny {
+        for i in 0..nx {
+            q[idx(i, j, nx)] = (k * i as f64).sin();
+        }
+    }
+
+    let u = vec![1.0; nx * ny];
+    let v = vec![0.0; nx * ny];
+    let mut out = vec![0.0; nx * ny];
+    Centered6.rhs(&q, &u, &v, dx, dy, nx, ny, &mut out);
+
+    for j in 0..ny {
+        for i in 0..nx {
+            let expected = -k * (k * i as f64).cos();
+            let got = out[idx(i, j, nx)];
+            assert!((got - expected).abs() < 1e-6, "{} vs {}", got, expected);
+        }
+    }
+}
+
+#[test]
 fn centered10_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/centered10.yaml");
     assert!(l2 < 0.15, "L2 norm too large: {}", l2);
