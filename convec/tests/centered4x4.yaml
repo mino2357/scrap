@@ -20,7 +20,7 @@ initial_condition:
   slot_length: 0.26
 
 scheme:
-  type: centered2d
+  type: centered4x4
 
 output:
   enable: false
