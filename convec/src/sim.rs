@@ -1,8 +1,8 @@
 use crate::config::{Config, SchemeType, TimeIntegrator, VelocityCfg};
 use crate::render::FrameWriter;
 use crate::schemes::{
-    Centered8, Cip, CipB, CipCsl, CipCsl2, CipCsl2Mh, Mp5, Scheme, TvdMinmod, TvdVanLeer, Upwind1,
-    Weno5Js,
+    Centered8, Centered10, Centered12, Cip, CipB, CipCsl, CipCsl2, CipCsl2Mh, Mp5, Scheme,
+    TvdMinmod, TvdVanLeer, Upwind1, Weno5Js,
 };
 use crate::shapes::init_field;
 use crate::utils::idx;
@@ -81,6 +81,8 @@ pub fn run(cfg: Config) -> Result<RunStats> {
 
     let scheme_box: Box<dyn Scheme> = match cfg.scheme.r#type {
         SchemeType::Centered8 => Box::new(Centered8),
+        SchemeType::Centered10 => Box::new(Centered10),
+        SchemeType::Centered12 => Box::new(Centered12),
         SchemeType::Weno5 => Box::new(Weno5Js),
         SchemeType::Upwind1 => Box::new(Upwind1),
         SchemeType::Cip => Box::new(Cip),

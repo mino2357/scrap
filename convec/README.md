@@ -10,6 +10,8 @@ with a solid body rotation velocity field. Several finite-difference schemes are
 available:
 
 * **Centered8** – eighth-order central derivative
+* **Centered10** – tenth-order central derivative
+* **Centered12** – twelfth-order central derivative
 
   ```math
   \frac{\partial f}{\partial x}\Big|_i \approx \frac{1}{280\Delta x}(-3 f_{i-4}+32 f_{i-3}-168 f_{i-2}+672 f_{i-1}-672 f_{i+1}+168 f_{i+2}-32 f_{i+3}+3 f_{i+4})
@@ -42,7 +44,7 @@ time overlaid in the corner for easier inspection.
 cargo run --release -- --config config.yaml
 ```
 
-Switch scheme by editing `scheme.type` (centered8 / weno5 / upwind1 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
+Switch scheme by editing `scheme.type` (centered8 / centered10 / centered12 / weno5 / upwind1 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
 
 ## Make video
 ```bash

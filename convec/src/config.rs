@@ -86,6 +86,8 @@ pub struct SchemeCfg {
 #[serde(rename_all = "snake_case")]
 pub enum SchemeType {
     Centered8,
+    Centered10,
+    Centered12,
     Weno5,
     Upwind1,
     Cip,
