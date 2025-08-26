@@ -115,7 +115,7 @@ fn teno6_l2_below_threshold() {
 #[test]
 fn teno7a_l2_below_threshold() {
     let l2 = run_and_get_l2("tests/teno7a.yaml");
-    assert!(l2 < 0.18, "L2 norm too large: {}", l2);
+    assert!(l2 < 0.16, "L2 norm too large: {}", l2);
 }
 
 #[test]
