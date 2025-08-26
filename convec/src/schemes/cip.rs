@@ -128,37 +128,51 @@ fn derivative_y(q: &[f64], dy: f64, nx: usize, ny: usize) -> Vec<f64> {
     dqy
 }
 
-/// Fourth-order central difference of the x-derivative.
-fn derivative_x4(q: &[f64], dx: f64, nx: usize, ny: usize) -> Vec<f64> {
+/// Sixth-order central difference of the x-derivative.
+fn derivative_x6(q: &[f64], dx: f64, nx: usize, ny: usize) -> Vec<f64> {
     let mut dqx = vec![0.0; nx * ny];
     for j in 0..ny {
         for i in 0..nx {
+            let im3 = pid(i as isize - 3, nx);
             let im2 = pid(i as isize - 2, nx);
             let im1 = pid(i as isize - 1, nx);
             let ip1 = pid(i as isize + 1, nx);
             let ip2 = pid(i as isize + 2, nx);
+            let ip3 = pid(i as isize + 3, nx);
             let k = idx(i, j, nx);
-            dqx[k] = (q[idx(im2, j, nx)] - 8.0 * q[idx(im1, j, nx)] + 8.0 * q[idx(ip1, j, nx)]
-                - q[idx(ip2, j, nx)])
-                / (12.0 * dx);
+            dqx[k] = (
+                q[idx(im3, j, nx)]
+                    - 9.0 * q[idx(im2, j, nx)]
+                    + 45.0 * q[idx(im1, j, nx)]
+                    - 45.0 * q[idx(ip1, j, nx)]
+                    + 9.0 * q[idx(ip2, j, nx)]
+                    - q[idx(ip3, j, nx)]
+            ) / (60.0 * dx);
         }
     }
     dqx
 }
 
-/// Fourth-order central difference of the y-derivative.
-fn derivative_y4(q: &[f64], dy: f64, nx: usize, ny: usize) -> Vec<f64> {
+/// Sixth-order central difference of the y-derivative.
+fn derivative_y6(q: &[f64], dy: f64, nx: usize, ny: usize) -> Vec<f64> {
     let mut dqy = vec![0.0; nx * ny];
     for i in 0..nx {
         for j in 0..ny {
+            let jm3 = pid(j as isize - 3, ny);
             let jm2 = pid(j as isize - 2, ny);
             let jm1 = pid(j as isize - 1, ny);
             let jp1 = pid(j as isize + 1, ny);
             let jp2 = pid(j as isize + 2, ny);
+            let jp3 = pid(j as isize + 3, ny);
             let k = idx(i, j, nx);
-            dqy[k] = (q[idx(i, jm2, nx)] - 8.0 * q[idx(i, jm1, nx)] + 8.0 * q[idx(i, jp1, nx)]
-                - q[idx(i, jp2, nx)])
-                / (12.0 * dy);
+            dqy[k] = (
+                q[idx(i, jm3, nx)]
+                    - 9.0 * q[idx(i, jm2, nx)]
+                    + 45.0 * q[idx(i, jm1, nx)]
+                    - 45.0 * q[idx(i, jp1, nx)]
+                    + 9.0 * q[idx(i, jp2, nx)]
+                    - q[idx(i, jp3, nx)]
+            ) / (60.0 * dy);
         }
     }
     dqy
@@ -220,8 +234,8 @@ fn cip_csl2_rhs(
     monotonic: bool,
     out: &mut [f64],
 ) {
-    let dqx = derivative_x4(q, dx, nx, ny);
-    let dqy = derivative_y4(q, dy, nx, ny);
+    let dqx = derivative_x6(q, dx, nx, ny);
+    let dqy = derivative_y6(q, dy, nx, ny);
     let mut dfx = vec![0.0; nx * ny];
     for j in 0..ny {
         let mut f = vec![0.0; nx];
@@ -240,7 +254,17 @@ fn cip_csl2_rhs(
                 dql = dl;
                 dqr = dr;
             }
-            f[i] = u_face * cip_face(ql, qr, dql, dqr, dx);
+            let mut qf = cip_face(ql, qr, dql, dqr, dx);
+            if monotonic {
+                let min = ql.min(qr);
+                let max = ql.max(qr);
+                if qf < min {
+                    qf = min;
+                } else if qf > max {
+                    qf = max;
+                }
+            }
+            f[i] = u_face * qf;
         }
         for i in 0..nx {
             let im = pid(i as isize - 1, nx);
@@ -265,7 +289,17 @@ fn cip_csl2_rhs(
                 dql = dl;
                 dqr = dr;
             }
-            g[j] = v_face * cip_face(ql, qr, dql, dqr, dy);
+            let mut qf = cip_face(ql, qr, dql, dqr, dy);
+            if monotonic {
+                let min = ql.min(qr);
+                let max = ql.max(qr);
+                if qf < min {
+                    qf = min;
+                } else if qf > max {
+                    qf = max;
+                }
+            }
+            g[j] = v_face * qf;
         }
         for j in 0..ny {
             let jm = pid(j as isize - 1, ny);
