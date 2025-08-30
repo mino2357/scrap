@@ -29,24 +29,7 @@ fn all_yaml_share_common_zalesak_settings() {
         assert_eq!(cfg.simulation.ny, 32, "{}: ny", name);
         assert!(approx(cfg.simulation.lx, 1.0, 1e-12), "{}: lx", name);
         assert!(approx(cfg.simulation.ly, 1.0, 1e-12), "{}: ly", name);
-        // Allow CIP-family to use a reduced CFL for better shape preservation
-        let is_cip_family = matches!(
-            name.as_str(),
-            "cip.yaml"
-                | "cip_b.yaml"
-                | "cip_csl.yaml"
-                | "cip_csl2.yaml"
-                | "cip_csl2_mh.yaml"
-        );
-        if is_cip_family {
-            assert!(
-                approx(cfg.simulation.cfl, 0.20, 1e-12),
-                "{}: cfl (CIP-family should be 0.20)",
-                name
-            );
-        } else {
-            assert!(approx(cfg.simulation.cfl, 0.40, 1e-12), "{}: cfl", name);
-        }
+        assert!(approx(cfg.simulation.cfl, 0.40, 1e-12), "{}: cfl", name);
         assert_eq!(cfg.simulation.rotations, 1, "{}: rotations", name);
 
         // Time integrator: default SSPRK(3,3) with one exception allowed

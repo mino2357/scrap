@@ -3,7 +3,7 @@ simulation:
   ny: 32
   lx: 1.0
   ly: 1.0
-  cfl: 0.20
+  cfl: 0.40
   rotations: 1
   velocity:
     type: solid_rotation
