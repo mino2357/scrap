@@ -38,6 +38,7 @@ fn flux_x(
     dx: f64,
     nx: usize,
     j: usize,
+    monotonic: bool,
     limiter: bool,
 ) -> Vec<f64> {
     let mut f = vec![0.0; nx];
@@ -46,11 +47,16 @@ fn flux_x(
         let idx0 = idx(i, j, nx);
         let idxp = idx(ip, j, nx);
         let u_face = 0.5 * (u[idx0] + u[idxp]);
-        let (ql, qr, dql, dqr) = if u_face >= 0.0 {
+        let (ql, qr, mut dql, mut dqr) = if u_face >= 0.0 {
             (q[idx0], q[idxp], dqx[idx0], dqx[idxp])
         } else {
             (q[idxp], q[idx0], dqx[idxp], dqx[idx0])
         };
+        if monotonic {
+            let (dl, dr) = monotonic_slopes(ql, qr, dql, dqr, dx);
+            dql = dl;
+            dqr = dr;
+        }
         let mut qf = cip_face(ql, qr, dql, dqr, dx);
         if limiter {
             let min = ql.min(qr);
@@ -74,6 +80,7 @@ fn flux_y(
     nx: usize,
     ny: usize,
     i: usize,
+    monotonic: bool,
     limiter: bool,
 ) -> Vec<f64> {
     let mut g = vec![0.0; ny];
@@ -82,11 +89,16 @@ fn flux_y(
         let idx0 = idx(i, j, nx);
         let idxp = idx(i, jp, nx);
         let v_face = 0.5 * (v[idx0] + v[idxp]);
-        let (ql, qr, dql, dqr) = if v_face >= 0.0 {
+        let (ql, qr, mut dql, mut dqr) = if v_face >= 0.0 {
             (q[idx0], q[idxp], dqy[idx0], dqy[idxp])
         } else {
             (q[idxp], q[idx0], dqy[idxp], dqy[idx0])
         };
+        if monotonic {
+            let (dl, dr) = monotonic_slopes(ql, qr, dql, dqr, dy);
+            dql = dl;
+            dqr = dr;
+        }
         let mut qf = cip_face(ql, qr, dql, dqr, dy);
         if limiter {
             let min = ql.min(qr);
@@ -140,13 +152,15 @@ fn derivative_x6(q: &[f64], dx: f64, nx: usize, ny: usize) -> Vec<f64> {
             let ip2 = pid(i as isize + 2, nx);
             let ip3 = pid(i as isize + 3, nx);
             let k = idx(i, j, nx);
+            // 6th-order central difference for the first derivative:
+            // (-1, 9, -45, 0, 45, -9, 1) / (60 h)
             dqx[k] = (
-                q[idx(im3, j, nx)]
-                    - 9.0 * q[idx(im2, j, nx)]
-                    + 45.0 * q[idx(im1, j, nx)]
-                    - 45.0 * q[idx(ip1, j, nx)]
-                    + 9.0 * q[idx(ip2, j, nx)]
-                    - q[idx(ip3, j, nx)]
+                -q[idx(im3, j, nx)]
+                    + 9.0 * q[idx(im2, j, nx)]
+                    - 45.0 * q[idx(im1, j, nx)]
+                    + 45.0 * q[idx(ip1, j, nx)]
+                    - 9.0 * q[idx(ip2, j, nx)]
+                    + q[idx(ip3, j, nx)]
             ) / (60.0 * dx);
         }
     }
@@ -165,13 +179,15 @@ fn derivative_y6(q: &[f64], dy: f64, nx: usize, ny: usize) -> Vec<f64> {
             let jp2 = pid(j as isize + 2, ny);
             let jp3 = pid(j as isize + 3, ny);
             let k = idx(i, j, nx);
+            // 6th-order central difference for the first derivative:
+            // (-1, 9, -45, 0, 45, -9, 1) / (60 h)
             dqy[k] = (
-                q[idx(i, jm3, nx)]
-                    - 9.0 * q[idx(i, jm2, nx)]
-                    + 45.0 * q[idx(i, jm1, nx)]
-                    - 45.0 * q[idx(i, jp1, nx)]
-                    + 9.0 * q[idx(i, jp2, nx)]
-                    - q[idx(i, jp3, nx)]
+                -q[idx(i, jm3, nx)]
+                    + 9.0 * q[idx(i, jm2, nx)]
+                    - 45.0 * q[idx(i, jm1, nx)]
+                    + 45.0 * q[idx(i, jp1, nx)]
+                    - 9.0 * q[idx(i, jp2, nx)]
+                    + q[idx(i, jp3, nx)]
             ) / (60.0 * dy);
         }
     }
@@ -197,6 +213,7 @@ fn cip_rhs(
     dy: f64,
     nx: usize,
     ny: usize,
+    monotonic: bool,
     limiter: bool,
     out: &mut [f64],
 ) {
@@ -204,7 +221,7 @@ fn cip_rhs(
     let dqy = derivative_y(q, dy, nx, ny);
     let mut dfx = vec![0.0; nx * ny];
     for j in 0..ny {
-        let fx = flux_x(q, &dqx, u, dx, nx, j, limiter);
+        let fx = flux_x(q, &dqx, u, dx, nx, j, monotonic, limiter);
         for i in 0..nx {
             let im = pid(i as isize - 1, nx);
             dfx[idx(i, j, nx)] = (fx[i] - fx[im]) / dx;
@@ -212,7 +229,7 @@ fn cip_rhs(
     }
     let mut dfy = vec![0.0; nx * ny];
     for i in 0..nx {
-        let fy = flux_y(q, &dqy, v, dy, nx, ny, i, limiter);
+        let fy = flux_y(q, &dqy, v, dy, nx, ny, i, monotonic, limiter);
         for j in 0..ny {
             let jm = pid(j as isize - 1, ny);
             dfy[idx(i, j, nx)] = (fy[j] - fy[jm]) / dy;
@@ -323,7 +340,8 @@ impl Scheme for Cip {
         ny: usize,
         out: &mut [f64],
     ) {
-        cip_rhs(q, u, v, dx, dy, nx, ny, false, out);
+        // Use monotonic Hermite slopes and a face min–max clamp
+        cip_rhs(q, u, v, dx, dy, nx, ny, true, true, out);
     }
 }
 
@@ -339,7 +357,8 @@ impl Scheme for CipCsl {
         ny: usize,
         out: &mut [f64],
     ) {
-        cip_rhs(q, u, v, dx, dy, nx, ny, false, out);
+        // Conservative CIP with monotonic Hermite slopes
+        cip_rhs(q, u, v, dx, dy, nx, ny, true, true, out);
     }
 }
 
@@ -355,7 +374,8 @@ impl Scheme for CipB {
         ny: usize,
         out: &mut [f64],
     ) {
-        cip_rhs(q, u, v, dx, dy, nx, ny, true, out);
+        // Bounded CIP (retain historical behavior: only min–max clamp)
+        cip_rhs(q, u, v, dx, dy, nx, ny, false, true, out);
     }
 }
 
