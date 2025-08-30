@@ -1,5 +1,6 @@
-//! 5次精度の加重基本的非振動 (WENO) スキームを用いた移流項評価。
-//! 実装は Borges らによる改良型の WENO-Z スキーム\[1\]に基づいている。
+//! 5次精度の加重基本的非振動 (WENO) スキーム。
+//! 実装は Borges らによる改良型の WENO-Z スキーム\[1\]に基づき，
+//! 面速度の符号で上流側再構成を選ぶ upwind 面流束を用いる。
 //!
 //! [1] R. Borges, M. Carmona, B. Costa, and W. S. Don,
 //!     "An improved weighted essentially non-oscillatory scheme for
@@ -11,23 +12,19 @@ use super::weno5_core::{cvals_betas_5, D5, EPS5};
 
 pub struct Weno5Z;
 
-fn weno5z_fd_flux_faces_1d(f: &[f64], q: &[f64], alpha: f64) -> Vec<f64> {
-    let n = f.len();
-    let mut fp = vec![0.0; n];
-    let mut fm = vec![0.0; n];
-    for i in 0..n {
-        fp[i] = (1.0 / 2.0) * (f[i] + alpha * q[i]);
-        fm[i] = (1.0 / 2.0) * (f[i] - alpha * q[i]);
-    }
+fn weno5z_fd_flux_faces_1d(q: &[f64], vel: &[f64]) -> Vec<f64> {
+    let n = q.len();
     let mut fh = vec![0.0; n];
     for i in 0..n {
-        // positive flux
+        let ip = pid(i as isize + 1, n);
+        let u = 0.5 * (vel[i] + vel[ip]);
+        // Left reconstruction at i+1/2
         let arrp = [
-            fp[pid(i as isize - 2, n)],
-            fp[pid(i as isize - 1, n)],
-            fp[i],
-            fp[pid(i as isize + 1, n)],
-            fp[pid(i as isize + 2, n)],
+            q[pid(i as isize - 2, n)],
+            q[pid(i as isize - 1, n)],
+            q[i],
+            q[ip],
+            q[pid(i as isize + 2, n)],
         ];
         let (cvalp, betap) = cvals_betas_5(&arrp);
         let taup = (betap[0] - betap[2]).abs();
@@ -35,18 +32,14 @@ fn weno5z_fd_flux_faces_1d(f: &[f64], q: &[f64], alpha: f64) -> Vec<f64> {
         let a1 = D5[1] * (1.0 + (taup / (EPS5 + betap[1])).powi(2));
         let a2 = D5[2] * (1.0 + (taup / (EPS5 + betap[2])).powi(2));
         let sp = a0 + a1 + a2;
-        let w0 = a0 / sp;
-        let w1 = a1 / sp;
-        let w2 = a2 / sp;
-        let fph = w0 * cvalp[0] + w1 * cvalp[1] + w2 * cvalp[2];
-
-        // negative flux (mirror stencil about i+1/2)
+        let ql = (a0 / sp) * cvalp[0] + (a1 / sp) * cvalp[1] + (a2 / sp) * cvalp[2];
+        // Right reconstruction at i+1/2 (mirror)
         let arrm = [
-            fm[pid(i as isize + 3, n)],
-            fm[pid(i as isize + 2, n)],
-            fm[pid(i as isize + 1, n)],
-            fm[i],
-            fm[pid(i as isize - 1, n)],
+            q[pid(i as isize + 3, n)],
+            q[pid(i as isize + 2, n)],
+            q[ip],
+            q[i],
+            q[pid(i as isize - 1, n)],
         ];
         let (cvalm, betam) = cvals_betas_5(&arrm);
         let taum = (betam[0] - betam[2]).abs();
@@ -54,11 +47,9 @@ fn weno5z_fd_flux_faces_1d(f: &[f64], q: &[f64], alpha: f64) -> Vec<f64> {
         let a1m = D5[1] * (1.0 + (taum / (EPS5 + betam[1])).powi(2));
         let a2m = D5[2] * (1.0 + (taum / (EPS5 + betam[2])).powi(2));
         let sm = a0m + a1m + a2m;
-        let w0m = a0m / sm;
-        let w1m = a1m / sm;
-        let w2m = a2m / sm;
-        let fmh = w2m * cvalm[0] + w1m * cvalm[1] + w0m * cvalm[2];
-        fh[i] = fph + fmh;
+        let qr = (a2m / sm) * cvalm[0] + (a1m / sm) * cvalm[1] + (a0m / sm) * cvalm[2];
+        let qu = if u >= 0.0 { ql } else { qr };
+        fh[i] = u * qu;
     }
     fh
 }
@@ -77,19 +68,14 @@ impl Scheme for Weno5Z {
     ) {
         let mut dfx = vec![0.0; nx * ny];
         for j in 0..ny {
-            let mut f = vec![0.0; nx];
             let mut qq = vec![0.0; nx];
-            let mut amax = 0.0;
+            let mut uu = vec![0.0; nx];
             for i in 0..nx {
                 let k = idx(i, j, nx);
-                f[i] = u[k] * q[k];
                 qq[i] = q[k];
-                let a = u[k].abs();
-                if a > amax {
-                    amax = a;
-                }
+                uu[i] = u[k];
             }
-            let fh = weno5z_fd_flux_faces_1d(&f, &qq, amax);
+            let fh = weno5z_fd_flux_faces_1d(&qq, &uu);
             for i in 0..nx {
                 let im = pid(i as isize - 1, nx);
                 dfx[idx(i, j, nx)] = (fh[i] - fh[im]) / dx;
@@ -97,19 +83,14 @@ impl Scheme for Weno5Z {
         }
         let mut dfy = vec![0.0; nx * ny];
         for i in 0..nx {
-            let mut g = vec![0.0; ny];
             let mut qq = vec![0.0; ny];
-            let mut amax = 0.0;
+            let mut vv = vec![0.0; ny];
             for j in 0..ny {
                 let k = idx(i, j, nx);
-                g[j] = v[k] * q[k];
                 qq[j] = q[k];
-                let a = v[k].abs();
-                if a > amax {
-                    amax = a;
-                }
+                vv[j] = v[k];
             }
-            let gh = weno5z_fd_flux_faces_1d(&g, &qq, amax);
+            let gh = weno5z_fd_flux_faces_1d(&qq, &vv);
             for j in 0..ny {
                 let jm = pid(j as isize - 1, ny);
                 dfy[idx(i, j, nx)] = (gh[j] - gh[jm]) / dy;

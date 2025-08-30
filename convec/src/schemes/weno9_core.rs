@@ -1,6 +1,12 @@
 //! Shared core for WENO9-family reconstructions (coefficients and beta).
 //! Provides the candidate polynomial values (`cval`) and smoothness
 //! indicators (`beta`) for a 9-point stencil.
+//!
+//! - `C[k][m]` は 5 点サブステンシル上のラグランジュ補間の係数を
+//!   x=+1/2 で評価したもので，`gen_c()` により const 関数で生成する。
+//! - `B[k]` は Jiang–Shu 型の滑らかさ指標 β を 2 次形式に展開した係数行列。
+//!   厳密な有理数で静的配列として与える（生成式からの自動化も可能だが，
+//!   実装と可読性のバランスから静的に保持）。
 
 pub const EPS: f64 = 1e-6;
 

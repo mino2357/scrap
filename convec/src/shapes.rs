@@ -48,6 +48,22 @@ pub fn init_field(cfg: &InitialConditionCfg, nx: usize, ny: usize, lx: f64, ly: 
                 }
             }
         }
+        InitialConditionCfg::Gaussian {
+            center_x,
+            center_y,
+            sigma,
+            amplitude,
+        } => {
+            let sig2 = sigma * sigma;
+            for j in 0..ny {
+                let y = (j as f64 + 0.5) * dy;
+                for i in 0..nx {
+                    let x = (i as f64 + 0.5) * dx;
+                    let r2 = (x - center_x) * (x - center_x) + (y - center_y) * (y - center_y);
+                    q[idx(i, j, nx)] = amplitude * (-r2 / (2.0 * sig2)).exp();
+                }
+            }
+        }
     }
     q
 }

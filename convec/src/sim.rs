@@ -1,4 +1,10 @@
 //! シミュレーションのメインルーチン。
+//!
+//! 概要:
+//! - 固体回転速度場のもとで 2D 受動スカラーの移流方程式を解く。
+//! - 時間積分は SSPRK(3,3) または SSPRK(5,4)（Spiteri & Ruuth, 2002）。
+//! - 空間離散化は `schemes` で与えられる（中心・WENO・TENO・TVD・MP 等）。
+//! - 出力は `render::FrameWriter` に委譲し，PNG/PPM を書き出す。
 
 use crate::config::{Config, SchemeType, TimeIntegrator, VelocityCfg};
 use crate::render::FrameWriter;
@@ -117,7 +123,9 @@ pub fn run(cfg: Config) -> Result<RunStats> {
     let mut rhs = vec![0.0; nx * ny];
     let mut q1 = vec![0.0; nx * ny];
     let mut q2 = vec![0.0; nx * ny];
-    // q3, q4 were used by SSPRK(5,4); not needed for SSPRK(3,3)
+    // Buffers for higher-stage integrators（SSPRK(5,4) 用）
+    let mut q3 = vec![0.0; nx * ny];
+    let mut q4 = vec![0.0; nx * ny];
 
     let integrator = cfg.simulation.time_integrator;
 
@@ -141,6 +149,48 @@ pub fn run(cfg: Config) -> Result<RunStats> {
                 scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
                 for k in 0..nx * ny {
                     q[k] = (1.0 / 3.0) * q[k] + (2.0 / 3.0) * (q2[k] + dt * rhs[k]);
+                }
+            }
+            TimeIntegrator::SspRk54 => {
+                // Spiteri & Ruuth (2002) SSPRK(5,4)
+                let a1 = 0.391752226571890_f64;
+                let a2 = 0.368410593050371_f64;
+                let a3 = 0.251891774271694_f64;
+                let a4 = 0.544974750228521_f64;
+                let a5 = 0.386708618503492_f64;
+                let b1 = 0.444370493651235_f64;
+                let b2 = 0.555629506348765_f64;
+                let b3 = 0.620101851488403_f64;
+                let b4 = 0.379898148511597_f64;
+                let b5 = 0.178079954393132_f64;
+                let b6 = 0.821920045606868_f64;
+                let c1 = 0.517231671970585_f64;
+                let c2 = 0.096059710526147_f64;
+
+                // y1
+                scheme_box.rhs(&q, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q1[k] = q[k] + a1 * dt * rhs[k];
+                }
+                // y2
+                scheme_box.rhs(&q1, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q2[k] = b1 * q[k] + b2 * q1[k] + a2 * dt * rhs[k];
+                }
+                // y3
+                scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q3[k] = b3 * q[k] + b4 * q2[k] + a3 * dt * rhs[k];
+                }
+                // y4
+                scheme_box.rhs(&q3, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q4[k] = b5 * q[k] + b6 * q3[k] + a4 * dt * rhs[k];
+                }
+                // final
+                scheme_box.rhs(&q4, &u, &v, dx, dy, nx, ny, &mut rhs);
+                for k in 0..nx * ny {
+                    q[k] = c1 * q4[k] + c2 * q[k] + a5 * dt * rhs[k];
                 }
             }
         }

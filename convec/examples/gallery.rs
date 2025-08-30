@@ -1,3 +1,4 @@
+use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -56,8 +57,19 @@ fn compute_steps(cfg: &Config) -> usize {
 
 fn main() -> Result<()> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let tests_dir = root.join("tests");
-    let gallery_dir = root.join("gallery_1rot");
+    // Optional arg: "gauss" to use smooth Gaussian benchmark set
+    let arg = env::args().nth(1).unwrap_or_default().to_lowercase();
+    let use_gauss = arg == "gauss" || arg == "gaussian" || arg == "smooth";
+    let tests_dir = if use_gauss {
+        root.join("tests_gaussian")
+    } else {
+        root.join("tests")
+    };
+    let gallery_dir = if use_gauss {
+        root.join("gallery_gauss_1rot")
+    } else {
+        root.join("gallery_1rot")
+    };
     fs::create_dir_all(&gallery_dir)?;
 
     let files = scan_yaml(&tests_dir)?;

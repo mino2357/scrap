@@ -104,6 +104,65 @@ The scripts `chemkin_to_md.py` and `chemkin_to_graph.py` help document CHEMKIN
 reaction mechanisms. The former renders the `REACTIONS` block in a Markdown
 list, while the latter builds a Graphviz graph of species connectivity. PNG
 output from `chemkin_to_graph.py` requires the Graphviz `dot` executable.
+
+## Gaussian rotation benchmark
+
+In addition to Zalesak's slotted disk, a smooth Gaussian bump test is provided
+to highlight behaviour on smooth data:
+
+- YAMLs for all schemes live in `convec/tests_gaussian/`.
+- Print an L2 ranking for one rotation:
+
+  - Zalesak: `cargo run --release --example rank`
+  - Gaussian: `cargo run --release --example rank_gauss`
+
+- To render PNG frames for the Gaussian case:
+
+  ```bash
+  cargo run --release -- --config convec/gaussian.yaml
+  ```
+
+### What to expect and why
+
+- On smooth data (Gaussian), high‑order centred schemes are non‑dissipative and
+  tend to dominate the L2 ranking: centred14 < centred12 < centred10 < centred8.
+- WENO/TENO are designed for robustness near discontinuities; their nonlinear
+  weights and upwind fluxes introduce a small but non‑zero dissipation even in
+  smooth regions, so their L2 is typically larger for this benchmark.
+- Grid/time resolution matters. With a coarse 32×32 grid and 3rd‑order time,
+  the advantage of 7th/9th‑order WENO/TENO is reduced. Increasing resolution or
+  using the provided 4th‑order SSPRK(5,4) time integrator reveals more of the
+  spatial order benefit.
+
+### New options and commands
+
+- WENO/TENO fluxes now use upwind face fluxes: the face velocity
+  `u_{i+1/2} = 0.5(u_i+u_{i+1})` picks the upwind reconstruction, which reduces
+  dissipation on smooth flows compared to LLF splitting.
+- 4th‑order time integrator (SSPRK(5,4)) is available. Enable in YAML:
+
+  ```yaml
+  simulation:
+    time_integrator: ssp_rk54  # default is ssp_rk3
+  ```
+
+- One‑shot galleries for the final frame after one rotation:
+
+  ```bash
+  # Zalesak gallery → convec/gallery_1rot
+  cargo run --release --example gallery
+
+  # Gaussian gallery → convec/gallery_gauss_1rot
+  cargo run --release --example gallery gauss
+  ```
+
+### Notes on TENO variants
+
+- In this repository the current TENO8A/TENO9A implementations reuse the WENO9
+  family reconstruction with TENO cut‑off. TENO8A is an alias of TENO9A here,
+  so their L2 matches. A distinct 8th‑order coefficient set can be added later
+  if desired.
+
 ## Comparison of spatial discretisation schemes
 
 The repository includes a variety of one-dimensional advection schemes.  The table

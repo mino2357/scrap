@@ -1,9 +1,10 @@
 //! Sixth-order Targeted ENO (TENO6) scheme.
 //!
-//! Adaptive-order reconstruction on a five-point stencil using the
-//! WENO5 family candidates and a TENO cut-off sensor. In smooth regions
-//! it reduces to WENO-Z; near discontinuities, non-smooth substencils are
-//! discarded and the remaining weights are renormalised.
+//! Adaptive-order reconstruction on a five-point stencil using WENO5-family
+//! candidates and a TENO cut-off sensor. In smooth regions it reduces to a
+//! linear optimal combination; near discontinuities, non-smooth substencils are
+//! discarded and the remaining weights are renormalised. 数値流束は upwind 面流束
+//! （面速度 `u_{i+1/2}` の符号で左右再構成から上流値を選択）を用いる。
 use crate::schemes::Scheme;
 use crate::utils::{idx, pid};
 use super::weno5_core::{cvals_betas_5, D5, EPS5};
@@ -45,36 +46,30 @@ fn teno6_reconstruct(arr: &[f64; 5]) -> f64 {
     w0 * cval[0] + w1 * cval[1] + w2 * cval[2]
 }
 
-fn teno6_fd_flux_faces_1d(f: &[f64], q: &[f64], alpha: f64) -> Vec<f64> {
-    let n = f.len();
-    let mut fp = vec![0.0; n];
-    let mut fm = vec![0.0; n];
-    for i in 0..n {
-        fp[i] = (1.0 / 2.0) * (f[i] + alpha * q[i]);
-        fm[i] = (1.0 / 2.0) * (f[i] - alpha * q[i]);
-    }
+fn teno6_fd_flux_faces_1d_upwind(q: &[f64], vel: &[f64]) -> Vec<f64> {
+    let n = q.len();
     let mut fh = vec![0.0; n];
     for i in 0..n {
-        // positive flux, face i+1/2
+        let ip = pid(i as isize + 1, n);
+        let u = 0.5 * (vel[i] + vel[ip]);
         let arrp = [
-            fp[pid(i as isize - 2, n)],
-            fp[pid(i as isize - 1, n)],
-            fp[i],
-            fp[pid(i as isize + 1, n)],
-            fp[pid(i as isize + 2, n)],
+            q[pid(i as isize - 2, n)],
+            q[pid(i as isize - 1, n)],
+            q[i],
+            q[ip],
+            q[pid(i as isize + 2, n)],
         ];
-        let fph = teno6_reconstruct(&arrp);
-
-        // negative flux, mirror about i+1/2
+        let ql = teno6_reconstruct(&arrp);
         let arrm = [
-            fm[pid(i as isize + 3, n)],
-            fm[pid(i as isize + 2, n)],
-            fm[pid(i as isize + 1, n)],
-            fm[i],
-            fm[pid(i as isize - 1, n)],
+            q[pid(i as isize + 3, n)],
+            q[pid(i as isize + 2, n)],
+            q[ip],
+            q[i],
+            q[pid(i as isize - 1, n)],
         ];
-        let fmh = teno6_reconstruct(&arrm);
-        fh[i] = fph + fmh;
+        let qr = teno6_reconstruct(&arrm);
+        let qu = if u >= 0.0 { ql } else { qr };
+        fh[i] = u * qu;
     }
     fh
 }
@@ -93,19 +88,14 @@ impl Scheme for Teno6 {
     ) {
         let mut dfx = vec![0.0; nx * ny];
         for j in 0..ny {
-            let mut f = vec![0.0; nx];
             let mut qq = vec![0.0; nx];
-            let mut amax = 0.0;
+            let mut uu = vec![0.0; nx];
             for i in 0..nx {
                 let k = idx(i, j, nx);
-                f[i] = u[k] * q[k];
                 qq[i] = q[k];
-                let a = u[k].abs();
-                if a > amax {
-                    amax = a;
-                }
+                uu[i] = u[k];
             }
-            let fh = teno6_fd_flux_faces_1d(&f, &qq, amax);
+            let fh = teno6_fd_flux_faces_1d_upwind(&qq, &uu);
             for i in 0..nx {
                 let im = pid(i as isize - 1, nx);
                 dfx[idx(i, j, nx)] = (fh[i] - fh[im]) / dx;
@@ -113,19 +103,14 @@ impl Scheme for Teno6 {
         }
         let mut dfy = vec![0.0; nx * ny];
         for i in 0..nx {
-            let mut g = vec![0.0; ny];
             let mut qq = vec![0.0; ny];
-            let mut amax = 0.0;
+            let mut vv = vec![0.0; ny];
             for j in 0..ny {
                 let k = idx(i, j, nx);
-                g[j] = v[k] * q[k];
                 qq[j] = q[k];
-                let a = v[k].abs();
-                if a > amax {
-                    amax = a;
-                }
+                vv[j] = v[k];
             }
-            let gh = teno6_fd_flux_faces_1d(&g, &qq, amax);
+            let gh = teno6_fd_flux_faces_1d_upwind(&qq, &vv);
             for j in 0..ny {
                 let jm = pid(j as isize - 1, ny);
                 dfy[idx(i, j, nx)] = (gh[j] - gh[jm]) / dy;

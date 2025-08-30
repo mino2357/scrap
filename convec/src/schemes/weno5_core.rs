@@ -1,4 +1,6 @@
 //! Shared core for WENO5-family reconstruction (coefficients and beta).
+//! 5 点サブステンシルの左右再構成で用いる候補多項式値 `cval` と
+//! Jiang–Shu 型の滑らかさ指標 `beta` を返すユーティリティ。
 
 pub const EPS5: f64 = 1e-6;
 pub const D5: [f64; 3] = [1.0/10.0, 3.0/5.0, 3.0/10.0];

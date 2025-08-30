@@ -89,6 +89,14 @@ pub enum InitialConditionCfg {
         center_y: f64,
         radius: f64,
     },
+    /// Gaussian bump q = A exp(-r^2/(2 sigma^2))
+    Gaussian {
+        center_x: f64,
+        center_y: f64,
+        sigma: f64,
+        #[serde(default = "default_amp")] 
+        amplitude: f64,
+    },
 }
 
 /// 空間差分スキームの選択。
@@ -137,6 +145,8 @@ pub enum SchemeType {
 pub enum TimeIntegrator {
     /// SSPRK(3,3)
     SspRk3,
+    /// SSPRK(5,4) of Spiteri & Ruuth (2002)
+    SspRk54,
 }
 
 impl Default for TimeIntegrator {
@@ -216,6 +226,10 @@ impl Default for Colormap {
 
 fn default_grid_step() -> usize {
     8
+}
+
+fn default_amp() -> f64 {
+    1.0
 }
 
 fn default_grid_thick() -> usize {

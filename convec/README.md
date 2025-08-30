@@ -59,6 +59,14 @@ q^{n+1} &= \tfrac{1}{3} q^n + \tfrac{2}{3}\big(q^{(2)} + \Delta t\,L(q^{(2)})\bi
 \end{aligned}
 ```
 
+An optional fourth-order SSPRK(5,4) time integrator (Spiteri & Ruuth, 2002) is
+available. Enable it in YAML:
+
+```yaml
+simulation:
+  time_integrator: ssp_rk54  # default is ssp_rk3
+```
+
 Frames are saved with a colour bar, thicker axes, and the current simulation
 time overlaid in the corner for easier inspection. The grid overlay is
 disabled by default, and the colour map defaults to `jet` (also supporting
@@ -73,6 +81,24 @@ Switch scheme by editing `scheme.type` (centered6 / centered8 / centered10 /
 centered12 / centered14 / weno5 / weno5_z / weno7_z / weno9_z / teno6 /
 teno7a / teno8a / teno9a / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer /
 mp5). Frames go to `output.dir`.
+
+### Benchmarks & Utilities
+
+- L2 ranking after one rotation (Zalesak):
+  `cargo run --release --example rank`
+- L2 ranking after one rotation (Gaussian):
+  `cargo run --release --example rank_gauss`
+- Final-frame gallery PNGs (Zalesak):
+  `cargo run --release --example gallery`
+- Final-frame gallery PNGs (Gaussian):
+  `cargo run --release --example gallery gauss`
+
+Notes:
+- WENO/TENO fluxes use an upwind face flux with face velocity
+  `u_{i+1/2} = 0.5(u_i + u_{i+1})`, selecting the upwind reconstruction. This
+  reduces dissipation on smooth flows versus simple LLF splitting.
+- Gaussian presets live in `tests_gaussian/` and `convec/gaussian.yaml`. The
+  Gaussian centre is at (0.5, 0.75) and the rotation centre at (0.5, 0.5).
 
 ## Make video
 ```bash

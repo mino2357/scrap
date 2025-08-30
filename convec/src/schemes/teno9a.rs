@@ -1,8 +1,9 @@
 //! Ninth-order TENO9-A scheme.
 //!
 //! Implemented as a TENO cut-off on the WENO9 family reconstruction.
-//! In smooth regions it reduces to WENO-Z; near discontinuities it
-//! discards non-smooth substencils and renormalises the remaining ones.
+//! In smooth regions it reduces towards the optimal linear combination; near
+//! discontinuities it discards non-smooth substencils and renormalises the
+//! remaining ones. 数値流束は面速度の符号に基づく upwind 面流束。
 use crate::schemes::Scheme;
 use crate::utils::{idx, pid};
 use super::weno9_core::{cvals_betas, D, EPS};
@@ -44,27 +45,20 @@ fn teno9a_reconstruct(arr: &[f64; 9]) -> f64 {
     }
 }
 
-fn teno9a_fd_flux_faces_1d(f: &[f64], q: &[f64], alpha: f64) -> Vec<f64> {
-    let n = f.len();
-    let mut fp = vec![0.0; n];
-    let mut fm = vec![0.0; n];
-    for i in 0..n {
-        fp[i] = (1.0 / 2.0) * (f[i] + alpha * q[i]);
-        fm[i] = (1.0 / 2.0) * (f[i] - alpha * q[i]);
-    }
+fn teno9a_fd_flux_faces_1d_upwind(q: &[f64], vel: &[f64]) -> Vec<f64> {
+    let n = q.len();
     let mut fh = vec![0.0; n];
     for i in 0..n {
+        let ip = pid(i as isize + 1, n);
+        let u = 0.5 * (vel[i] + vel[ip]);
         let mut arrp = [0.0; 9];
-        for k in 0..9 {
-            arrp[k] = fp[pid(i as isize + k as isize - 4, n)];
-        }
-        let fph = teno9a_reconstruct(&arrp);
+        for k in 0..9 { arrp[k] = q[pid(i as isize + k as isize - 4, n)]; }
+        let ql = teno9a_reconstruct(&arrp);
         let mut arrm = [0.0; 9];
-        for k in 0..9 {
-            arrm[k] = fm[pid(i as isize + 5 - k as isize, n)];
-        }
-        let fmh = teno9a_reconstruct(&arrm);
-        fh[i] = fph + fmh;
+        for k in 0..9 { arrm[k] = q[pid(i as isize + 5 - k as isize, n)]; }
+        let qr = teno9a_reconstruct(&arrm);
+        let qu = if u >= 0.0 { ql } else { qr };
+        fh[i] = u * qu;
     }
     fh
 }
@@ -83,19 +77,14 @@ impl Scheme for Teno9A {
     ) {
         let mut dfx = vec![0.0; nx * ny];
         for j in 0..ny {
-            let mut f = vec![0.0; nx];
             let mut qq = vec![0.0; nx];
-            let mut amax = 0.0;
+            let mut uu = vec![0.0; nx];
             for i in 0..nx {
                 let k = idx(i, j, nx);
-                f[i] = u[k] * q[k];
                 qq[i] = q[k];
-                let a = u[k].abs();
-                if a > amax {
-                    amax = a;
-                }
+                uu[i] = u[k];
             }
-            let fh = teno9a_fd_flux_faces_1d(&f, &qq, amax);
+            let fh = teno9a_fd_flux_faces_1d_upwind(&qq, &uu);
             for i in 0..nx {
                 let im = pid(i as isize - 1, nx);
                 dfx[idx(i, j, nx)] = (fh[i] - fh[im]) / dx;
@@ -103,19 +92,14 @@ impl Scheme for Teno9A {
         }
         let mut dfy = vec![0.0; nx * ny];
         for i in 0..nx {
-            let mut g = vec![0.0; ny];
             let mut qq = vec![0.0; ny];
-            let mut amax = 0.0;
+            let mut vv = vec![0.0; ny];
             for j in 0..ny {
                 let k = idx(i, j, nx);
-                g[j] = v[k] * q[k];
                 qq[j] = q[k];
-                let a = v[k].abs();
-                if a > amax {
-                    amax = a;
-                }
+                vv[j] = v[k];
             }
-            let gh = teno9a_fd_flux_faces_1d(&g, &qq, amax);
+            let gh = teno9a_fd_flux_faces_1d_upwind(&qq, &vv);
             for j in 0..ny {
                 let jm = pid(j as isize - 1, ny);
                 dfy[idx(i, j, nx)] = (gh[j] - gh[jm]) / dy;
