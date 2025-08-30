@@ -48,7 +48,7 @@ fn flux_x(q: &[f64], u: &[f64], _dx: f64, nx: usize, j: usize) -> Vec<f64> {
         let ip = pid(i as isize + 1, nx);
         let idx0 = idx(i, j, nx);
         let idxp = idx(ip, j, nx);
-        let u_face = 0.5 * (u[idx0] + u[idxp]);
+        let u_face = (1.0 / 2.0) * (u[idx0] + u[idxp]);
         let qf = if u_face >= 0.0 {
             mp5_face_pos(&qq, i, nx)
         } else {
@@ -69,7 +69,7 @@ fn flux_y(q: &[f64], v: &[f64], _dy: f64, nx: usize, ny: usize, i: usize) -> Vec
         let jp = pid(j as isize + 1, ny);
         let idx0 = idx(i, j, nx);
         let idxp = idx(i, jp, nx);
-        let v_face = 0.5 * (v[idx0] + v[idxp]);
+        let v_face = (1.0 / 2.0) * (v[idx0] + v[idxp]);
         let qf = if v_face >= 0.0 {
             mp5_face_pos(&qq, j, ny)
         } else {

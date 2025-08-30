@@ -19,6 +19,8 @@ pub mod centered6;
 pub mod centered8;
 pub mod cip;
 pub mod mp5;
+mod weno9_core;
+mod weno5_core;
 pub mod teno6;
 pub mod teno7a;
 pub mod teno8a;

@@ -30,7 +30,7 @@ available:
 * **WENO9-Z** – ninth-order WENO with Z-type weights
 * **TENO6** – sixth-order targeted essentially non-oscillatory scheme
 * **TENO7-A** – seventh-order TENO variant A
-* **TENO8-A** – eighth-order TENO variant A
+* **TENO8-A** – alias of TENO9-A in this repo (same reconstruction)
 * **TENO9-A** – ninth-order TENO variant A
 * **Upwind1** – first-order upwind difference
 * **Upwind3x3** – first-order upwind difference with a 3×3 stencil

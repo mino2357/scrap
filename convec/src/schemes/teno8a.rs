@@ -1,8 +1,10 @@
 //! Eighth-order TENO8-A scheme.
 //!
-//! Currently implemented as a wrapper around the ninth-order WENO-Z
-//! discretisation.
-use crate::schemes::{Scheme, Weno9Z};
+//! Currently an alias of the TENO9-A implementation: both use the
+//! WENO9 family candidates with the same TENO cut-off. Kept to retain
+//! configuration compatibility; may diverge when an 8th-order optimal
+//! coefficient set is added.
+use crate::schemes::{Scheme, Teno9A};
 
 pub struct Teno8A;
 
@@ -18,6 +20,7 @@ impl Scheme for Teno8A {
         ny: usize,
         out: &mut [f64],
     ) {
-        Weno9Z.rhs(q, u, v, dx, dy, nx, ny, out);
+        // Delegate to TENO9-A. Behaviour is identical in the current codebase.
+        Teno9A.rhs(q, u, v, dx, dy, nx, ny, out);
     }
 }

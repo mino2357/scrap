@@ -129,12 +129,12 @@ upwind method.
 | weno9_z | 9 | 9× | very accurate but expensive; research-grade DNS |
 | teno6 | 6 | 6× | targeted ENO with selective stencils |
 | teno7a | 7 | 7× | adaptive TENO, variant A |
-| teno8a | 8 | 8× | higher-order TENO, variant A |
+| teno8a | 8 | 8× | alias of TENO9A in this repo |
 | teno9a | 9 | 9× | highest-order TENO, variant A |
 
 ### Rough ranking
 
-- **Highest fidelity near discontinuities:** TENO9A ≥ TENO8A ≥ TENO7A ≥ TENO6 ≥ WENO9_Z > WENO7_Z > MP5 ≈ WENO5_Z > WENO5 > TVD_van_leer > TVD_minmod > upwind3x3 > upwind1 > centered schemes.
+- **Highest fidelity near discontinuities:** TENO9A ≈ TENO8A (alias) ≥ TENO7A ≥ TENO6 ≥ WENO9_Z > WENO7_Z > MP5 ≈ WENO5_Z > WENO5 > TVD_van_leer > TVD_minmod > upwind3x3 > upwind1 > centered schemes.
 - **Best for smooth periodic problems:** centered14 ≥ centered12 ≥ centered10 ≥ centered8 ≥ centered6.
 - **Cheapest per grid point:** upwind1 < tvd_minmod ≈ tvd_van_leer < upwind3x3 < centered6.
 

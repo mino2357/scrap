@@ -81,6 +81,8 @@ fn main() -> Result<()> {
         cfg.output.grid = false;
         cfg.output.axes = false;
         cfg.output.colorbar = false;
+        // Force colormap to jet for gallery output
+        cfg.output.colormap = convec::config::Colormap::Jet;
 
         // Run
         let _ = sim::run(cfg)?;

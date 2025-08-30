@@ -24,12 +24,12 @@ fn tvd_flux_faces_1d(q: &[f64], u: &[f64], limiter: fn(f64) -> f64) -> Vec<f64> 
         let dqf = q[ip1] - q[i];
         let dqb = q[i] - q[im1];
         let r = if dqf.abs() < eps { 0.0 } else { dqb / dqf };
-        let ql = q[i] + 0.5 * limiter(r) * dqf;
+        let ql = q[i] + (1.0 / 2.0) * limiter(r) * dqf;
         let dqf1 = q[ip2] - q[ip1];
         let dqb1 = q[ip1] - q[i];
         let r1 = if dqf1.abs() < eps { 0.0 } else { dqb1 / dqf1 };
-        let qr = q[ip1] - 0.5 * limiter(r1) * (q[ip1] - q[i]);
-        let u_face = 0.5 * (u[i] + u[ip1]);
+        let qr = q[ip1] - (1.0 / 2.0) * limiter(r1) * (q[ip1] - q[i]);
+        let u_face = (1.0 / 2.0) * (u[i] + u[ip1]);
         fh[i] = if u_face >= 0.0 {
             u_face * ql
         } else {
