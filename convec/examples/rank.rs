@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use convec::config::{Config, SchemeType, TimeIntegrator};
+use convec::config::{Config, SchemeType};
 use convec::sim;
 
 fn scan_yaml(dir: &Path) -> Result<Vec<PathBuf>> {
@@ -19,12 +19,8 @@ fn scan_yaml(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(v)
 }
 
-fn label(s: SchemeType, ti: TimeIntegrator) -> String {
-    let base = format!("{:?}", s).to_lowercase();
-    match ti {
-        TimeIntegrator::SspRk3 => base,
-        TimeIntegrator::SspRk54 => format!("{} (ssprk54)", base),
-    }
+fn label(s: SchemeType) -> String {
+    format!("{:?}", s).to_lowercase()
 }
 
 fn main() -> Result<()> {
@@ -36,7 +32,7 @@ fn main() -> Result<()> {
         let cfg = Config::from_path(&f).with_context(|| format!("load {}", f.display()))?;
         // Run and collect L2
         let stats = sim::run(cfg.clone()).with_context(|| "run sim")?;
-        let name = label(cfg.scheme.r#type, cfg.simulation.time_integrator);
+        let name = label(cfg.scheme.r#type);
         results.push((name, stats.l2));
     }
     results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
@@ -46,4 +42,3 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
-

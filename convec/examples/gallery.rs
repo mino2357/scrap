@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use convec::config::{Config, SchemeType, TimeIntegrator, VelocityCfg};
+use convec::config::{Config, SchemeType, VelocityCfg};
 use convec::sim;
 
 fn scan_yaml(dir: &Path) -> Result<Vec<PathBuf>> {
@@ -19,12 +19,8 @@ fn scan_yaml(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(v)
 }
 
-fn label(s: SchemeType, ti: TimeIntegrator) -> String {
-    let base = format!("{:?}", s).to_lowercase();
-    match ti {
-        TimeIntegrator::SspRk3 => base,
-        TimeIntegrator::SspRk54 => format!("{} (ssprk54)", base),
-    }
+fn label(s: SchemeType) -> String {
+    format!("{:?}", s).to_lowercase()
 }
 
 fn compute_steps(cfg: &Config) -> usize {
@@ -51,11 +47,10 @@ fn compute_steps(cfg: &Config) -> usize {
             }
         }
     }
-    let mut dt = cfg.simulation.cfl * dx.min(dy) / (umax + 1e-15);
+    let dt = cfg.simulation.cfl * dx.min(dy) / (umax + 1e-15);
     let t_end = cfg.simulation.rotations as f64;
     let steps = (t_end / dt).ceil() as usize;
-    dt = t_end / steps as f64;
-    // println!("[gallery] steps={} dt={:.3e}", steps, dt);
+    // println!("[gallery] steps={} dt={:.3e}", steps, t_end / steps as f64);
     steps
 }
 
@@ -69,7 +64,7 @@ fn main() -> Result<()> {
     for f in files {
         let mut cfg = Config::from_path(&f).with_context(|| format!("load {}", f.display()))?;
         let steps = compute_steps(&cfg);
-        let name = label(cfg.scheme.r#type, cfg.simulation.time_integrator);
+        let name = label(cfg.scheme.r#type);
 
         // Prepare a temporary out dir for this run to capture only initial+final
         let tmp_dir = root.join("gallery_tmp").join(name.replace(' ', "_"));
@@ -108,4 +103,3 @@ fn main() -> Result<()> {
     println!("Saved gallery to {}", gallery_dir.display());
     Ok(())
 }
-

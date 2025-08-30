@@ -43,11 +43,11 @@ available:
   \end{cases}
   ```
 * **TVD-Minmod**, **TVD-VanLeer** – second-order TVD schemes with flux limiters
-* **CIP**, **CIP-CSL**, **CIP-B** – cubic interpolated propagation schemes
+* **MP5** – fifth-order monotonicity-preserving scheme
 
-  ```math
-  \omega_k = \frac{\alpha_k}{\sum_{m=0}^2 \alpha_m},\qquad \alpha_k = \frac{d_k}{(\varepsilon+\beta_k)^2}
-  ```
+Note: CIP-family schemes (CIP, CIP-CSL, CIP-B, CIP-CSL2, CIP-CSL2-MH) exist in
+the codebase but are currently experimental and excluded from the default test
+suite and documentation examples.
 
 Time integration uses the third-order TVD Runge–Kutta method of Shu and Osher:
 
@@ -69,7 +69,10 @@ disabled by default, and the colour map defaults to `jet` (also supporting
 cargo run --release -- --config config.yaml
 ```
 
-Switch scheme by editing `scheme.type` (centered6 / centered8 / centered10 / centered12 / weno5 / weno5_z / weno7_z / weno9_z / teno6 / teno7a / teno8a / teno9a / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer). Frames go to `output.dir`.
+Switch scheme by editing `scheme.type` (centered6 / centered8 / centered10 /
+centered12 / centered14 / weno5 / weno5_z / weno7_z / weno9_z / teno6 /
+teno7a / teno8a / teno9a / upwind1 / upwind3x3 / tvd_minmod / tvd_van_leer /
+mp5). Frames go to `output.dir`.
 
 ## Make video
 ```bash

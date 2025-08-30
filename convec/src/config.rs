@@ -134,12 +134,9 @@ pub enum SchemeType {
 #[serde(rename_all = "snake_case")]
 /// Strong-stability-preserving Runge–Kutta time integrators.
 /// - `SspRk3`: 3-stage 3rd-order scheme of Shu & Osher (1989).
-/// - `SspRk54`: 5-stage 4th-order scheme of Spiteri & Ruuth (2002).
 pub enum TimeIntegrator {
     /// SSPRK(3,3)
     SspRk3,
-    /// SSPRK(5,4)
-    SspRk54,
 }
 
 impl Default for TimeIntegrator {

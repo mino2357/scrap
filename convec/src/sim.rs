@@ -21,16 +21,11 @@ pub struct RunStats {
 }
 
 /// 2 次元スカラー移流方程式を解くメインループ。
-/// 時間積分には強安定性保存 (SSP) Runge–Kutta 法を用い，設定により
-/// 次のいずれかを選択できる：
-/// - 3 段 3 次の SSPRK(3,3) 法\[1\]
-/// - 5 段 4 次の SSPRK(5,4) 法\[2\]
+/// 時間積分には強安定性保存 (SSP) Runge–Kutta 法を用いる。
+/// 現在は 3 段 3 次の SSPRK(3,3) 法\[1\]のみをサポートする。
 ///
 /// [1] C.-W. Shu and S. Osher, "Efficient implementation of essentially non-oscillatory
 /// shock-capturing schemes, II", *Journal of Computational Physics*, 83(1), 32-78, 1989.
-/// [2] R. J. Spiteri and S. J. Ruuth, "A new class of optimal high-order
-/// strong-stability-preserving time discretization methods", *SIAM Journal on
-/// Numerical Analysis*, 40(2), 469-491, 2002.
 pub fn run(cfg: Config) -> Result<RunStats> {
     let nx = cfg.simulation.nx;
     let ny = cfg.simulation.ny;
@@ -122,8 +117,7 @@ pub fn run(cfg: Config) -> Result<RunStats> {
     let mut rhs = vec![0.0; nx * ny];
     let mut q1 = vec![0.0; nx * ny];
     let mut q2 = vec![0.0; nx * ny];
-    let mut q3 = vec![0.0; nx * ny];
-    let mut q4 = vec![0.0; nx * ny];
+    // q3, q4 were used by SSPRK(5,4); not needed for SSPRK(3,3)
 
     let integrator = cfg.simulation.time_integrator;
 
@@ -147,51 +141,6 @@ pub fn run(cfg: Config) -> Result<RunStats> {
                 scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
                 for k in 0..nx * ny {
                     q[k] = (1.0 / 3.0) * q[k] + (2.0 / 3.0) * (q2[k] + dt * rhs[k]);
-                }
-            }
-            TimeIntegrator::SspRk54 => {
-                // SSPRK(5,4) of Spiteri & Ruuth (2002) in Shu–Osher form
-                // Coefficients from the original paper (optimal 5-stage, 4th-order):
-                // a1=0.391752226571890, a2=0.368410593050371, a3=0.251891774271694,
-                // a4=0.544974750212370, a5=0.160970546280939
-                // and convex combination weights between stages.
-
-                // Stage 1
-                scheme_box.rhs(&q, &u, &v, dx, dy, nx, ny, &mut rhs);
-                for k in 0..nx * ny {
-                    q1[k] = q[k] + 0.391_752_226_571_890_f64 * dt * rhs[k];
-                }
-
-                // Stage 2
-                scheme_box.rhs(&q1, &u, &v, dx, dy, nx, ny, &mut rhs);
-                for k in 0..nx * ny {
-                    q2[k] = 0.444_370_493_651_235_f64 * q[k]
-                        + 0.555_629_506_348_765_f64 * q1[k]
-                        + 0.368_410_593_050_371_f64 * dt * rhs[k];
-                }
-
-                // Stage 3
-                scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
-                for k in 0..nx * ny {
-                    q3[k] = 0.620_101_851_488_403_f64 * q[k]
-                        + 0.379_898_148_511_597_f64 * q2[k]
-                        + 0.251_891_774_271_694_f64 * dt * rhs[k];
-                }
-
-                // Stage 4
-                scheme_box.rhs(&q3, &u, &v, dx, dy, nx, ny, &mut rhs);
-                for k in 0..nx * ny {
-                    q4[k] = 0.178_079_954_393_132_f64 * q[k]
-                        + 0.821_920_045_606_868_f64 * q3[k]
-                        + 0.544_974_750_212_370_f64 * dt * rhs[k];
-                }
-
-                // Stage 5 / final
-                scheme_box.rhs(&q4, &u, &v, dx, dy, nx, ny, &mut rhs);
-                for k in 0..nx * ny {
-                    q[k] = 0.517_231_671_970_585_f64 * q[k]
-                        + 0.482_768_328_029_415_f64 * q4[k]
-                        + 0.160_970_546_280_939_f64 * dt * rhs[k];
                 }
             }
         }

@@ -32,18 +32,9 @@ fn all_yaml_share_common_zalesak_settings() {
         assert!(approx(cfg.simulation.cfl, 0.40, 1e-12), "{}: cfl", name);
         assert_eq!(cfg.simulation.rotations, 1, "{}: rotations", name);
 
-        // Time integrator: default SSPRK(3,3) with one exception allowed
-        // - centered8_ssprk54.yaml uses SSPRK(5,4)
-        let expected_ti = if name == "centered8_ssprk54.yaml" {
-            TimeIntegrator::SspRk54
-        } else {
-            TimeIntegrator::SspRk3
-        };
+        // Time integrator: SSPRK(3,3) only
         assert!(
-            matches!((cfg.simulation.time_integrator, expected_ti),
-                (TimeIntegrator::SspRk3, TimeIntegrator::SspRk3)
-                | (TimeIntegrator::SspRk54, TimeIntegrator::SspRk54)
-            ),
+            matches!(cfg.simulation.time_integrator, TimeIntegrator::SspRk3),
             "{}: unexpected time integrator: {:?}",
             name,
             cfg.simulation.time_integrator
