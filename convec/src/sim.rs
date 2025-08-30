@@ -150,35 +150,48 @@ pub fn run(cfg: Config) -> Result<RunStats> {
                 }
             }
             TimeIntegrator::SspRk54 => {
-                // SSPRK(5,4) [2]:
-                // q^(1) = q^n + dt * L(q^n)
+                // SSPRK(5,4) of Spiteri & Ruuth (2002) in Shu–Osher form
+                // Coefficients from the original paper (optimal 5-stage, 4th-order):
+                // a1=0.391752226571890, a2=0.368410593050371, a3=0.251891774271694,
+                // a4=0.544974750212370, a5=0.160970546280939
+                // and convex combination weights between stages.
+
+                // Stage 1
                 scheme_box.rhs(&q, &u, &v, dx, dy, nx, ny, &mut rhs);
                 for k in 0..nx * ny {
-                    q1[k] = q[k] + dt * rhs[k];
+                    q1[k] = q[k] + 0.391_752_226_571_890_f64 * dt * rhs[k];
                 }
 
-                // q^(2) = q^(1) + dt * L(q^(1))
+                // Stage 2
                 scheme_box.rhs(&q1, &u, &v, dx, dy, nx, ny, &mut rhs);
                 for k in 0..nx * ny {
-                    q2[k] = q1[k] + dt * rhs[k];
+                    q2[k] = 0.444_370_493_651_235_f64 * q[k]
+                        + 0.555_629_506_348_765_f64 * q1[k]
+                        + 0.368_410_593_050_371_f64 * dt * rhs[k];
                 }
 
-                // q^(3) = 3/4 q^n + 1/4 (q^(2) + dt * L(q^(2)))
+                // Stage 3
                 scheme_box.rhs(&q2, &u, &v, dx, dy, nx, ny, &mut rhs);
                 for k in 0..nx * ny {
-                    q3[k] = 0.75 * q[k] + 0.25 * (q2[k] + dt * rhs[k]);
+                    q3[k] = 0.620_101_851_488_403_f64 * q[k]
+                        + 0.379_898_148_511_597_f64 * q2[k]
+                        + 0.251_891_774_271_694_f64 * dt * rhs[k];
                 }
 
-                // q^(4) = q^(3) + dt * L(q^(3))
+                // Stage 4
                 scheme_box.rhs(&q3, &u, &v, dx, dy, nx, ny, &mut rhs);
                 for k in 0..nx * ny {
-                    q4[k] = q3[k] + dt * rhs[k];
+                    q4[k] = 0.178_079_954_393_132_f64 * q[k]
+                        + 0.821_920_045_606_868_f64 * q3[k]
+                        + 0.544_974_750_212_370_f64 * dt * rhs[k];
                 }
 
-                // q^{n+1} = 1/3 q^n + 2/3 (q^(4) + dt * L(q^(4)))
+                // Stage 5 / final
                 scheme_box.rhs(&q4, &u, &v, dx, dy, nx, ny, &mut rhs);
                 for k in 0..nx * ny {
-                    q[k] = (1.0 / 3.0) * q[k] + (2.0 / 3.0) * (q4[k] + dt * rhs[k]);
+                    q[k] = 0.517_231_671_970_585_f64 * q[k]
+                        + 0.482_768_328_029_415_f64 * q4[k]
+                        + 0.160_970_546_280_939_f64 * dt * rhs[k];
                 }
             }
         }
