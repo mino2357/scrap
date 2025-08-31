@@ -169,6 +169,7 @@ pub struct OutputCfg {
     pub flip_y: bool,
     pub out_w: Option<usize>,
     pub out_h: Option<usize>,
+    #[serde(default)]
     pub interp: Interp,
     #[serde(default)]
     pub grid: bool,
@@ -207,6 +208,10 @@ pub enum OutFmt {
 pub enum Interp {
     Nearest,
     Bilinear,
+}
+
+impl Default for Interp {
+    fn default() -> Self { Interp::Nearest }
 }
 
 /// 利用可能なカラーマップ。

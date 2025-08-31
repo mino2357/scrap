@@ -88,10 +88,20 @@ mp5). Frames go to `output.dir`.
   `cargo run --release --example rank`
 - L2 ranking after one rotation (Gaussian):
   `cargo run --release --example rank_gauss`
+- L2 ranking after one rotation, REVERSED (Zalesak):
+  `cargo run --release --example rank_reverse`
+- L2 ranking after one rotation, REVERSED (Gaussian):
+  `cargo run --release --example rank_gauss_reverse`
 - Final-frame gallery PNGs (Zalesak):
   `cargo run --release --example gallery`
 - Final-frame gallery PNGs (Gaussian):
   `cargo run --release --example gallery gauss`
+- Final-frame gallery PNGs, REVERSED (Zalesak):
+  `cargo run --release --example gallery reverse`
+- Final-frame gallery PNGs, REVERSED (Gaussian):
+  `cargo run --release --example gallery gauss reverse`
+- One-shot: run all rankings and produce all galleries:
+  `cargo run --release --example all`
 
 Notes:
 - WENO/TENO fluxes use an upwind face flux with face velocity
@@ -99,6 +109,7 @@ Notes:
   reduces dissipation on smooth flows versus simple LLF splitting.
 - Gaussian presets live in `tests_gaussian/` and `convec/gaussian.yaml`. The
   Gaussian centre is at (0.5, 0.75) and the rotation centre at (0.5, 0.5).
+  Reversed galleries are saved under `gallery_1rot_rev/` and `gallery_gauss_1rot_rev/`.
 
 ## Make video
 ```bash

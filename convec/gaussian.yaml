@@ -35,7 +35,7 @@ output:
   flip_y: true
   out_w: 1000
   out_h: 1000
-  interp: bilinear
+  interp: nearest
   grid: false
   grid_step: 8
   grid_thick: 2

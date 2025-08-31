@@ -1,10 +1,9 @@
-use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use convec::config::{Config, SchemeType, VelocityCfg};
+use convec::config::{Colormap, Config, OutFmt, SchemeType, VelocityCfg};
 use convec::sim;
 
 fn scan_yaml(dir: &Path) -> Result<Vec<PathBuf>> {
@@ -22,6 +21,35 @@ fn scan_yaml(dir: &Path) -> Result<Vec<PathBuf>> {
 
 fn label(s: SchemeType) -> String {
     format!("{:?}", s).to_lowercase()
+}
+
+fn flip_omega(cfg: &mut Config) {
+    cfg.simulation.velocity = match cfg.simulation.velocity {
+        VelocityCfg::SolidRotation { omega, center_x, center_y } => VelocityCfg::SolidRotation {
+            omega: -omega.abs(),
+            center_x,
+            center_y,
+        },
+    };
+}
+
+fn rank(dir: &Path, reverse: bool, title: &str) -> Result<()> {
+    let files = scan_yaml(dir)?;
+    let mut results: Vec<(String, f64)> = vec![];
+    for f in files {
+        let mut cfg = Config::from_path(&f).with_context(|| format!("load {}", f.display()))?;
+        if reverse { flip_omega(&mut cfg); }
+        let stats = sim::run(cfg.clone()).with_context(|| "run sim")?;
+        let name = label(cfg.scheme.r#type);
+        results.push((name, stats.l2));
+    }
+    results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    println!("{}", title);
+    for (i, (name, l2)) in results.iter().enumerate() {
+        println!("{:2}. {:<18} L2={:.6e}", i + 1, name, l2);
+    }
+    println!("");
+    Ok(())
 }
 
 fn compute_steps(cfg: &Config) -> usize {
@@ -51,74 +79,36 @@ fn compute_steps(cfg: &Config) -> usize {
     let dt = cfg.simulation.cfl * dx.min(dy) / (umax + 1e-15);
     let t_end = cfg.simulation.rotations as f64;
     let steps = (t_end / dt).ceil() as usize;
-    // println!("[gallery] steps={} dt={:.3e}", steps, t_end / steps as f64);
     steps
 }
 
-fn main() -> Result<()> {
+fn gallery(dir: &Path, out_dir: &Path, reverse: bool) -> Result<()> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    // Optional args:
-    //  - "gauss" | "gaussian" | "smooth" -> use Gaussian set (tests_gaussian)
-    //  - "reverse" -> flip rotation sign
-    // Examples:
-    //   cargo run --release --example gallery
-    //   cargo run --release --example gallery gauss
-    //   cargo run --release --example gallery reverse
-    //   cargo run --release --example gallery gauss reverse
-    let args: Vec<String> = env::args().skip(1).map(|s| s.to_lowercase()).collect();
-    let use_gauss = args.iter().any(|a| a == "gauss" || a == "gaussian" || a == "smooth");
-    let reverse = args.iter().any(|a| a == "reverse" || a == "rev");
-    let tests_dir = if use_gauss {
-        root.join("tests_gaussian")
-    } else {
-        root.join("tests")
-    };
-    let gallery_dir = if use_gauss {
-        if reverse { root.join("gallery_gauss_1rot_rev") } else { root.join("gallery_gauss_1rot") }
-    } else {
-        if reverse { root.join("gallery_1rot_rev") } else { root.join("gallery_1rot") }
-    };
-    fs::create_dir_all(&gallery_dir)?;
-
-    let files = scan_yaml(&tests_dir)?;
+    fs::create_dir_all(out_dir)?;
+    let files = scan_yaml(dir)?;
     for f in files {
         let mut cfg = Config::from_path(&f).with_context(|| format!("load {}", f.display()))?;
         let steps = compute_steps(&cfg);
         let name = label(cfg.scheme.r#type);
 
-        // Prepare a temporary out dir for this run to capture only initial+final
         let tmp_dir = root.join("gallery_tmp").join(name.replace(' ', "_"));
         if tmp_dir.exists() { fs::remove_dir_all(&tmp_dir)?; }
         fs::create_dir_all(&tmp_dir)?;
 
-        // Override output settings
         cfg.output.enable = true;
         cfg.output.dir = tmp_dir.to_string_lossy().to_string();
         cfg.output.prefix = "frame".to_string();
-        cfg.output.format = convec::config::OutFmt::Png;
-        cfg.output.stride = steps; // write only at final step
+        cfg.output.format = OutFmt::Png;
+        cfg.output.stride = steps;
         cfg.output.start_index = 0;
         cfg.output.grid = false;
         cfg.output.axes = false;
         cfg.output.colorbar = false;
-        // Force colormap to jet for gallery output
-        cfg.output.colormap = convec::config::Colormap::Jet;
-
-        // Run
-        // Flip omega if requested
-        if reverse {
-            cfg.simulation.velocity = match cfg.simulation.velocity {
-                VelocityCfg::SolidRotation { omega, center_x, center_y } => VelocityCfg::SolidRotation {
-                    omega: -omega.abs(),
-                    center_x,
-                    center_y,
-                },
-            };
-        }
+        cfg.output.colormap = Colormap::Jet;
+        if reverse { flip_omega(&mut cfg); }
 
         let _ = sim::run(cfg)?;
 
-        // Find the latest frame in tmp_dir and move as <scheme>.png under gallery_dir
         let mut last_path: Option<PathBuf> = None;
         for entry in fs::read_dir(&tmp_dir)? {
             let p = entry?.path();
@@ -127,12 +117,36 @@ fn main() -> Result<()> {
             }
         }
         if let Some(src) = last_path {
-            let dest = gallery_dir.join(format!("{}.png", name));
+            let dest = out_dir.join(format!("{}.png", name));
             fs::rename(&src, &dest).with_context(|| format!("move {} -> {}", src.display(), dest.display()))?;
         }
-        // cleanup temp dir
         fs::remove_dir_all(&tmp_dir).ok();
     }
-    println!("Saved gallery to {}", gallery_dir.display());
     Ok(())
 }
+
+fn main() -> Result<()> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let tests = root.join("tests");
+    let tests_gauss = root.join("tests_gaussian");
+    let gal_z_fwd = root.join("gallery_1rot");
+    let gal_z_rev = root.join("gallery_1rot_rev");
+    let gal_g_fwd = root.join("gallery_gauss_1rot");
+    let gal_g_rev = root.join("gallery_gauss_1rot_rev");
+
+    // Rankings
+    rank(&tests, false, "# L2 ranking (Zalesak, 1 rot)")?;
+    rank(&tests, true,  "# L2 ranking (Zalesak, 1 rot, REVERSED)")?;
+    rank(&tests_gauss, false, "# L2 ranking (Gaussian, 1 rot)")?;
+    rank(&tests_gauss, true,  "# L2 ranking (Gaussian, 1 rot, REVERSED)")?;
+
+    // Galleries
+    gallery(&tests, &gal_z_fwd, false)?;
+    gallery(&tests, &gal_z_rev, true)?;
+    gallery(&tests_gauss, &gal_g_fwd, false)?;
+    gallery(&tests_gauss, &gal_g_rev, true)?;
+
+    println!("Saved galleries to:\n  {}\n  {}\n  {}\n  {}", gal_z_fwd.display(), gal_z_rev.display(), gal_g_fwd.display(), gal_g_rev.display());
+    Ok(())
+}
+
