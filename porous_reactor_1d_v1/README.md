@@ -1,4 +1,7 @@
-# 1次元 多孔質触媒層の移流・拡散・反応・熱移動モデル
+# 1次元 多孔質触媒反応器（v1: α形式 + 体積基準熱交換）
+
+この v1 は、熱拡散率（α = k/(ρCp)）で記述し、固体–流体の熱交換係数 `h_sf` を
+体積基準 [W/(m³·K)] として直接用いるバリアントです。
 
 このコードは、**1次元の多孔質触媒反応器**における流体相と固体相の**化学種輸送と熱輸送**を連成して計算します。  
 支配方程式には以下を含みます：
@@ -157,3 +160,18 @@ State<T> make_state(
     // 入口条件（Dirichlet）
     T cA_in = T(1), T cB_in = T(0.4), T cC_in = T(0), T Tf_in = T(300)
 );
+
+```
+
+---
+
+## ビルド・実行と可視化
+
+```bash
+make -C porous_reactor_1d_v1 run   # 実行（conc.dat / temp.dat を出力）
+gnuplot -persist porous_reactor_1d_v1/plot_live.gp  # ライブ描画
+```
+
+- `conc.dat`: 列は `x cA cB cC`
+- `temp.dat`: 列は `x Tf Ts`
+- `plot_live.gp`: 2 画面（濃度・温度）を定期リロードで更新描画

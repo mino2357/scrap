@@ -41,7 +41,7 @@ sim
 settings.json
 
 # keep thermodynamic data
-!case04/therm.dat
+!chemkin_ode/therm.dat
 
 # Rust
 target/

@@ -1,4 +1,4 @@
-# Sample CHEMKIN-II Solver
+# CHEMKIN-II ODE Solver（小規模デモ）
 
 This example reads a small CHEMKIN-II mechanism (`chem.inp`) and integrates the
 resulting set of ordinary differential equations.  Reaction rates follow
@@ -49,7 +49,7 @@ The mechanism and thermodynamic data files may also be overridden on the
 command line:
 
 ```
-./case04/chem rk45 new_mech.inp new_therm.dat
+./chemkin_ode/chem rk45 new_mech.inp new_therm.dat
 ```
 
 ### Visualization
@@ -65,13 +65,13 @@ of temperature for all species.
 ## Build and run
 
 ```bash
-make -C case04 run
+make -C chemkin_ode run
 ```
 
 The command builds the solver, runs the simulation and generates the PNG plots.
 To experiment with other integrators, invoke the executable directly, e.g.
 
 ```bash
-./case04/chem rk45   # Runge–Kutta–Fehlberg 4(5)
-./case04/chem rk78   # Runge–Kutta–Fehlberg 7(8)
+./chemkin_ode/chem rk45   # Runge–Kutta–Fehlberg 4(5)
+./chemkin_ode/chem rk78   # Runge–Kutta–Fehlberg 7(8)
 ```

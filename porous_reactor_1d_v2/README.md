@@ -1,4 +1,7 @@
-# 1D Porous Reactor Model with Heat and Reaction
+# 1D Porous Reactor (v2: k形式 + 表面基準熱交換)
+
+この v2 は熱伝導率 `k`（W/(m·K)）で記述し、固体–流体の熱交換を
+表面基準係数 `h_sf` [W/(m²·K)] と触媒表面積密度 `a_s` の積 `a_s h_sf` として用います。
 
 ## 概要
 多孔質触媒反応における1次元の移流・拡散・反応・熱移動をモデル化．
@@ -57,6 +60,19 @@ f_T(T_s) = \frac12\left[1 + \frac{T_s - 300}{\sqrt{10000 + (T_s-300)^2}}\right]
 ```
 
 $R_\mathrm{vol} = a_s r_s$
+
+---
+
+## ビルド・実行と可視化
+
+```bash
+make -C porous_reactor_1d_v2 run   # 実行（conc.dat / temp.dat / result.dat）
+gnuplot -persist porous_reactor_1d_v2/plot_live.gp  # ライブ描画（必要に応じて）
+```
+
+- `conc.dat`: `x cA cB cC`
+- `temp.dat`: `x Tf Ts`
+- `result.dat`: 計算終了時の全量（`x cA cB cC Tf Ts`）
 
 ---
 
@@ -167,4 +183,3 @@ f_T^*(\hat{T}_s) = f_T(T_0+\Delta T\,\hat{T}_s)
 ```bash
 g++ -std=c++17 -O2 -Wall -Wextra main.cpp -o sim
 ```
-

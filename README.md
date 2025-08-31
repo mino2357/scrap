@@ -2,7 +2,7 @@
 
 Numerical experiments for compressible flow and reactive transport.
 
-## case01: 1‑D Euler equations
+## euler1d_sod: 1‑D Euler equations
 
 $\rho$ is density, $u$ velocity, $e$ total energy density and $p$ pressure.
 The conservative form of the 1‑D Euler equations is
@@ -25,12 +25,12 @@ with the equation of state (heat capacity ratio $\gamma$)
 p = (\gamma - 1)\left(e - \tfrac{1}{2}\rho u^2\right).
 ```
 
-The code in `case01` reproduces the Sod shock tube problem and compares the
+The code in `euler1d_sod` reproduces the Sod shock tube problem and compares the
 numerical solution against the analytic reference.
 
-## case02: 1‑D porous catalyst layer
+## porous_reactor_1d_v1: 1‑D porous catalyst layer
 
-`case02` solves transport of three species $A,B,C$ and energy in a porous
+`porous_reactor_1d_v1` solves transport of three species $A,B,C$ and energy in a porous
 reactor. Advection with velocity $u$ couples to effective diffusion and a
 heterogeneous reaction $A+B\rightarrow C$ on the catalyst surface. The fluid
 and solid phases exchange heat and react according to an Arrhenius rate with a
@@ -64,9 +64,9 @@ Energy equations for fluid ($T_f$) and solid ($T_s$):
 with $q_{rx}=a_s(-\Delta H)r_s$. Boundary conditions are Dirichlet at the
 inlet and zero‑gradient at the outlet.
 
-## case03: dimensionless porous reactor
+## porous_reactor_1d_v2: dimensionless porous reactor
 
-`case03` nondimensionalises the previous model using length $L$, velocity $u$
+`porous_reactor_1d_v2` nondimensionalises the previous model using length $L$, velocity $u$
 and concentration scale $C_0$. Dimensionless groups include
 
 ```math
@@ -78,21 +78,21 @@ and concentration scale $C_0$. Dimensionless groups include
 
 along with heat–exchange numbers $H_f$ and $H_s$ and nondimensional reaction
 heats $\chi_f$ and $\chi_s$. The dimensionless species and energy equations
-mirror those of case02 but in scaled variables $\hat{x}$, $\hat{t}$, $\hat{c}_i$ and
+mirror those of porous_reactor_1d_v1 but in scaled variables $\hat{x}$, $\hat{t}$, $\hat{c}_i$ and
 $\hat{T}_{f,s}$.
 
-## convec: 2‑D scalar advection
+## advection2d: 2‑D scalar advection
 
-`convec` tracks the rotation of Zalesak's disk under a prescribed velocity
+`advection2d` tracks the rotation of Zalesak's disk under a prescribed velocity
 field. Spatial derivatives use either an eighth‑order centred scheme or the
 fifth‑order WENO method, while time marching employs a three‑stage TVD
 Runge–Kutta integrator. The program writes PNG frames with the current time,
 colour bar and labelled axes for later animation. Further details and build
-instructions live in `convec/README.md`.
+instructions live in `advection2d/README.md`.
 
-## case05: Pythagorean three-body problem
+## three_body_pythagorean: Pythagorean three-body problem
 
-`case05` integrates Burrau's Pythagorean three-body problem using GCC's
+`three_body_pythagorean` integrates Burrau's Pythagorean three-body problem using GCC's
 quad-precision floating point type (`__float128`) and a custom Bulirsch–Stoer
 solver with adaptive time stepping (effective order $\ge 10$). Bodies of masses
 3, 4, and 5 start at rest at the corners of a 3‑4‑5 triangle and the program
@@ -100,7 +100,7 @@ saves their positions in `case05.dat` for later analysis.
 
 ## Utilities
 
-The scripts `chemkin_to_md.py` and `chemkin_to_graph.py` help document CHEMKIN
+The scripts `chemkin_ode/chemkin_to_md.py` and `chemkin_ode/chemkin_to_graph.py` help document CHEMKIN
 reaction mechanisms. The former renders the `REACTIONS` block in a Markdown
 list, while the latter builds a Graphviz graph of species connectivity. PNG
 output from `chemkin_to_graph.py` requires the Graphviz `dot` executable.
@@ -110,7 +110,7 @@ output from `chemkin_to_graph.py` requires the Graphviz `dot` executable.
 In addition to Zalesak's slotted disk, a smooth Gaussian bump test is provided
 to highlight behaviour on smooth data:
 
-- YAMLs for all schemes live in `convec/tests_gaussian/`.
+- YAMLs for all schemes live in `advection2d/tests_gaussian/`.
 - Print an L2 ranking for one rotation:
 
   - Zalesak: `cargo run --release --example rank`
@@ -119,7 +119,7 @@ to highlight behaviour on smooth data:
 - To render PNG frames for the Gaussian case:
 
   ```bash
-  cargo run --release -- --config convec/gaussian.yaml
+  cargo run --release -- --config advection2d/gaussian.yaml
   ```
 
 ### What to expect and why
@@ -149,10 +149,10 @@ to highlight behaviour on smooth data:
 - One‑shot galleries for the final frame after one rotation:
 
   ```bash
-  # Zalesak gallery → convec/gallery_1rot
+  # Zalesak gallery → advection2d/gallery_1rot
   cargo run --release --example gallery
 
-  # Gaussian gallery → convec/gallery_gauss_1rot
+  # Gaussian gallery → advection2d/gallery_gauss_1rot
   cargo run --release --example gallery gauss
   ```
 

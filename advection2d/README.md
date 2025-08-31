@@ -107,7 +107,7 @@ Notes:
 - WENO/TENO fluxes use an upwind face flux with face velocity
   `u_{i+1/2} = 0.5(u_i + u_{i+1})`, selecting the upwind reconstruction. This
   reduces dissipation on smooth flows versus simple LLF splitting.
-- Gaussian presets live in `tests_gaussian/` and `convec/gaussian.yaml`. The
+- Gaussian presets live in `tests_gaussian/` and `advection2d/gaussian.yaml`. The
   Gaussian centre is at (0.5, 0.75) and the rotation centre at (0.5, 0.5).
   Reversed galleries are saved under `gallery_1rot_rev/` and `gallery_gauss_1rot_rev/`.
 
