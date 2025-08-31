@@ -9,7 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: convec
+        # The Rust crate lives in the advection2d directory (package name: convec)
+        working-directory: advection2d
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
