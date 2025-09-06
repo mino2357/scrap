@@ -52,6 +52,11 @@ Key options:
 - `--check {0|1}`: compute energy/angmom periodically.
 - `--seed <uint64>`: RNG seed.
 - `--selftest`: runs a 2‑body circular‑orbit test and prints relative errors.
+- `--kernel {fused|two_pass}`: fused kick or two-pass forces.
+- `--mode {vector|scalar|scalar_tiled}`:
+  - `vector`: AVX2/FMA + SP rsqrt + NR×2 + jタイル（既定）
+  - `scalar`: 素朴なスカラ（二重ループ, タイル無し）
+  - `scalar_tiled`: スカラ＋j方向タイル（Bj）だけ適用（SIMDなし）
 
 A typical Yoshida4 run prints pairs/s, GFLOP/s (est.), and relative energy & angular‑momentum errors.
 
@@ -78,6 +83,73 @@ You can use the unified helper to build and run, and to print a detailed through
 ```
 
 Flags `--bytes-per-pair` (default 8) and `--fpp` (default 32 FLOP/pair) control the summary’s memory bandwidth estimate and GFLOP/s conversion. Provide `--peak-gflops` and `--mem-gbs` to print roofline limits and utilization.
+
+### Compare compiler optimization presets
+
+Build presets are selectable via CMake cache `NBODY_OPT_PRESET` and `run.sh build --opt`:
+
+- default: `-O3 -march=native -mavx2 -mfma -ffp-contract=fast -fopenmp`
+- strong: `-Ofast -march=native -mavx2 -mfma -ffast-math -ffp-contract=fast -fopenmp -flto -fomit-frame-pointer -funroll-loops`
+- weak: `-O0 -g -march=native -mavx2 -mfma -fopenmp -fno-builtin -fno-unroll-loops -fno-omit-frame-pointer`
+
+Quick A/B with separate build dirs and speedup report:
+
+```bash
+./run.sh compare_opt --N 4096 --steps 200 --dt 1e-3 --eps 1e-3 \
+                     --method yoshida4 --Bj 512 --threads 4 --kernel fused
+```
+
+Manual control of a single build dir:
+
+```bash
+# Strong
+./run.sh build --opt strong
+# Weak
+./run.sh build --opt weak
+```
+
+### Compare naive vs optimized kernels
+
+Run the same case twice (vector vs scalar) and report speedup:
+
+```bash
+./run.sh compare --N 4096 --steps 200 --dt 1e-3 --eps 1e-3 \
+                 --method yoshida4 --Bj 512 --threads 4 --kernel fused
+```
+
+Tip for summary consistency:
+- Vector mode: `--bytes-per-pair 8` (j=32B shared by i=4 lanes)
+- Scalar mode: `--bytes-per-pair 32`（スカラは共有がないため）
+
+### Compare scalar vs scalar_tiled (タイル効果の分離)
+
+スカラ実装に Bj タイルだけを入れた `scalar_tiled` と素朴スカラ `scalar` を比較して、SIMD ではなくアルゴリズム（局所性改善）の寄与だけを見る:
+
+```bash
+./run.sh compare_scalar --N 4096 --steps 50 --dt 1e-3 --eps 1e-3 \
+                        --method yoshida4 --Bj 1024 --threads 4 --kernel fused
+```
+
+注意: この差はケース依存で小さいことがあります。N と Bj によっては HW プリフェッチが効き、`scalar` が十分に速く見えることもあります。Bj を掃引（例: 512, 1024, 1536, 2048）し、`N=8192` 以上など L2/DRAM を跨ぐ領域で観察すると違いが見えやすくなります。集計時の `--bytes-per-pair` はスカラ系では 32 を目安にしてください。
+
+### scalar_tiled の最適 Bj を自動探索（N97想定）
+
+`run.sh sweep` は Bj の粗→細スイープを行い、最良値を表示します。`MODE=scalar_tiled` を付けるとスカラ＋タイルの探索ができます。
+
+例（4096体, 200ステップ, Bj=128..3072 粗→±256を16刻みで微調整）:
+
+```bash
+# 長時間の測定向け（コマンドは nbody ディレクトリで実行）
+MODE=scalar_tiled N=4096 STEPS=200 COARSE_MIN=128 COARSE_MAX=3072 \
+COARSE_STEP=128 FINE_RADIUS=256 FINE_STEP=16 OUT=sweep_scalar_tiled_4096.csv \
+./run.sh sweep --kernel fused --threads 4
+```
+
+ヒント（N97/Gracemontのメモリ事情を踏まえて）:
+- j 粒子のワーキングセットは 1 粒子 32B（x,y,z,m）。Bj の塊あたり `32×Bj` Bytes。
+- 「タイルを変えた直後の i が直前の j を再利用できる」ことが効くので、L1D に“直近の j 塊”が残る範囲が狙い目です。
+- 実測では Bj≈1.5k〜2.0k 付近で“台地”が出やすい一方、scalar_tiled は lane 共有がないため plateu が緩く、Bj の感度がケース依存になります。粗→細の自動探索で最良を拾ってください。
+- スループットの読み方は本 README の「Throughput summary」を参照。スカラ系は `--bytes-per-pair 32` を基準にメモリ帯域の目安を読むと、Roofline の位置づけがしやすいです。
 
 ---
 
@@ -151,6 +223,26 @@ References
 - Self‑interaction is benign (r=0 ⇒ alpha·r = 0), so not explicitly skipped.
 - FTZ/DAZ enabled at start to avoid denorm slowdowns.
 - For best WSL2 performance: keep repo under Linux FS (e.g., `~/`), pin threads (`OMP_PLACES=cores OMP_PROC_BIND=close`).
+
+### Windows/WSL2: Foreground app hurts throughput (why and mitigations)
+
+Symptom: When switching focus to a foreground GUI app (e.g. Chrome), pairs/s can drop noticeably.
+
+Why this happens on low‑power SoCs (e.g. Intel N97):
+- Foreground boost: Windows gives the foreground app a scheduling boost; background work (WSL’s `vmmem`) may get shorter quanta and lower priority.
+- Power throttling/EcoQoS: Background apps can be shifted to energy‑efficient QoS, which lowers CPU frequency aggressiveness (Windows 11 “Efficiency mode”).
+- Shared power budget: iGPU activity (browser rendering/video) and CPU share a tight power envelope; GPU load can pull down CPU turbo clocks.
+- WSL2 VM boundary: Linux nice/affinity applies inside the VM; Windows ultimately schedules `vmmem`, which is treated as a background process if the terminal/VSCode isn’t focused.
+
+Mitigations (pick what fits your setup):
+- Power plan: Set Windows power mode to “Best performance” and select the “High performance” or “Ultimate Performance” plan. In Advanced settings → Processor power management, set Minimum processor state=100%, Cooling policy=Active. Reboot or `wsl --shutdown` after changing.
+- Task Manager: Ensure `vmmem`/`VmmemWSL` is not in “Efficiency mode”. Optionally set its Priority to High (Details → right‑click → Set priority → High).
+- Reserve a core for UI: run with one fewer thread (e.g. `OMP_NUM_THREADS=3` on a 4‑core N97) so the OS always has headroom for the foreground app.
+- Keep the browser idle: avoid animated/video tabs during benchmarks; keep a blank tab foreground. Hardware acceleration ON usually reduces CPU load; if GPU saturation drags CPU clocks, prefer a static page.
+- Reduce GUI in WSL: for long runs avoid live plotting (`--plot none`), or increase `--plot_every`.
+- After toggling settings: `wsl --shutdown` to restart the VM so new host policies apply cleanly.
+
+References: Windows “Efficiency mode” (Task Manager) and EcoQoS; Microsoft’s Foreground Boost behavior; Roofline reasoning above explains the impact of CPU/GPU power sharing on compute‑bound kernels.
 
 ---
 

@@ -4,6 +4,14 @@
 #include <cmath>
 #include <omp.h>
 
+// Mode flags
+// g_vector_mode: 1=vector (AVX2), 0=scalar
+// g_scalar_tiled: when scalar, 1=use j-tiling (Bj) in scalar loops; 0=naive double loop
+static int g_vector_mode = 1;
+static int g_scalar_tiled = 0;
+extern "C" int* __get_vector_mode(){ return &g_vector_mode; }
+extern "C" int* __get_scalar_tiled(){ return &g_scalar_tiled; }
+
 static inline __m256d rsqrt_dp_avx2(__m256d x) {
     __m128  xf   = _mm256_cvtpd_ps(x);
     __m128  y0f  = _mm_rsqrt_ps(xf);
@@ -23,6 +31,47 @@ void compute_accel_dp_avx2(const double* x, const double* y, const double* z, co
                            double* ax, double* ay, double* az,
                            std::size_t N, double eps2, std::size_t Bj)
 {
+    // Scalar fallback
+    if (!g_vector_mode){
+        if (g_scalar_tiled){
+            // Scalar with j-tiling (Bj)
+            #pragma omp parallel for schedule(static)
+            for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
+                double xi=x[i], yi=y[i], zi=z[i];
+                double axi=0,ayi=0,azi=0;
+                for (std::size_t jb=0; jb<N; jb+=Bj){
+                    std::size_t jn = std::min(jb+Bj, N);
+                    for (std::size_t j=jb; j<jn; ++j){
+                        double rx=x[j]-xi, ry=y[j]-yi, rz=z[j]-zi;
+                        double r2=rx*rx+ry*ry+rz*rz+eps2;
+                        double inv=1.0/std::sqrt(r2);
+                        double inv3=inv*inv*inv;
+                        double a=m[j]*inv3;
+                        axi += a*rx; ayi += a*ry; azi += a*rz;
+                    }
+                }
+                ax[i]=axi; ay[i]=ayi; az[i]=azi;
+            }
+        } else {
+            // Scalar naive (no tiling)
+            #pragma omp parallel for schedule(static)
+            for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
+                double xi=x[i], yi=y[i], zi=z[i];
+                double axi=0,ayi=0,azi=0;
+                for (std::size_t j=0; j<N; ++j){
+                    double rx=x[j]-xi, ry=y[j]-yi, rz=z[j]-zi;
+                    double r2=rx*rx+ry*ry+rz*rz+eps2;
+                    double inv=1.0/std::sqrt(r2);
+                    double inv3=inv*inv*inv;
+                    double a=m[j]*inv3;
+                    axi += a*rx; ayi += a*ry; azi += a*rz;
+                }
+                ax[i]=axi; ay[i]=ayi; az[i]=azi;
+            }
+        }
+        return;
+    }
+
     #pragma omp parallel for schedule(static)
     for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){ ax[i]=ay[i]=az[i]=0.0; }
 
@@ -165,6 +214,47 @@ void kick_accumulate_dp_avx2(const double* x, const double* y, const double* z, 
                              double* vx, double* vy, double* vz,
                              std::size_t N, double eps2, double tau, std::size_t Bj)
 {
+    // Scalar fallback
+    if (!g_vector_mode){
+        if (g_scalar_tiled){
+            // Scalar with j-tiling (Bj)
+            #pragma omp parallel for schedule(static)
+            for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
+                double xi_=x[i], yi_=y[i], zi_=z[i];
+                double vxi=vx[i], vyi=vy[i], vzi=vz[i];
+                for (std::size_t jb=0; jb<N; jb+=Bj){
+                    std::size_t jn = std::min(jb+Bj, N);
+                    for (std::size_t j=jb; j<jn; ++j){
+                        double rx=x[j]-xi_, ry=y[j]-yi_, rz=z[j]-zi_;
+                        double r2=rx*rx+ry*ry+rz*rz+eps2;
+                        double inv=1.0/std::sqrt(r2);
+                        double inv3=inv*inv*inv;
+                        double a=m[j]*inv3, tau_a=tau*a;
+                        vxi += tau_a*rx; vyi += tau_a*ry; vzi += tau_a*rz;
+                    }
+                }
+                vx[i]=vxi; vy[i]=vyi; vz[i]=vzi;
+            }
+        } else {
+            // Scalar naive (no tiling)
+            #pragma omp parallel for schedule(static)
+            for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
+                double xi_=x[i], yi_=y[i], zi_=z[i];
+                double vxi=vx[i], vyi=vy[i], vzi=vz[i];
+                for (std::size_t j=0; j<N; ++j){
+                    double rx=x[j]-xi_, ry=y[j]-yi_, rz=z[j]-zi_;
+                    double r2=rx*rx+ry*ry+rz*rz+eps2;
+                    double inv=1.0/std::sqrt(r2);
+                    double inv3=inv*inv*inv;
+                    double a=m[j]*inv3, tau_a=tau*a;
+                    vxi += tau_a*rx; vyi += tau_a*ry; vzi += tau_a*rz;
+                }
+                vx[i]=vxi; vy[i]=vyi; vz[i]=vzi;
+            }
+        }
+        return;
+    }
+
     const __m256d veps2 = _mm256_set1_pd(eps2);
     const __m256d vtau  = _mm256_set1_pd(tau);
     ptrdiff_t Ivec = (ptrdiff_t)(N & ~std::size_t(3));

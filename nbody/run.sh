@@ -9,15 +9,19 @@ export OMP_NUM_THREADS=${OMP_NUM_THREADS:-4}
 export OMP_PLACES=${OMP_PLACES:-cores}
 export OMP_PROC_BIND=${OMP_PROC_BIND:-close}
 
-BIN=./build/nbody
+BUILD_DIR=${BUILD_DIR:-build}
+BIN=./${BUILD_DIR}/nbody
 
 usage() {
   cat <<USAGE
 Usage: ./run.sh <command> [options]
 
 Commands
-  build [--clean] [--cc <cxx>] [--no-lld]
+  build [--clean] [--cc <cxx>] [--no-lld] [--opt default|strong|weak] [--dir DIR]
   run [nbody options...] [--bytes-per-pair B] [--fpp F] [--peak-gflops G] [--mem-gbs M]
+  compare [common nbody options...]   # runs vector vs scalar and summarizes speedup
+  compare_scalar [common nbody options...]   # runs scalar vs scalar_tiled
+  compare_opt [common nbody options...]   # builds weak/strong in separate dirs and compares
   selftest [--steps N] [--dt DT] [--eps EPS] [--method M] [--threads T]
   autosweep [--N N] [--dt DT] [--eps EPS] [--threads T] [--list CSV]
   sweep [--N N] [--steps S] [--dt DT] [--eps EPS] [--threads T] [--kernel K]
@@ -26,13 +30,12 @@ Commands
   heatmap [--Ns CSV] [--bj-min A] [--bj-max B] [--bj-step S]
           [--steps S] [--dt DT] [--eps EPS] [--threads T] [--kernel K]
           [--out FILE]
-  live [--N N] [--steps S] [--dt DT] [--eps EPS] [--method M]
-       [--Bj B] [--threads T] [--kernel K]
-       [--plot-every K] [--plot-limit M] [--plot-axes xy|xz|yz]
+  live [nbody options...]   # forwards args; adds --plot live if absent
 
 Examples
   ./run.sh build --clean
   ./run.sh run --N 4096 --steps 200 --dt 1e-3 --eps 1e-3 --method yoshida4 --Bj 512 --threads 4 --kernel fused --check 1
+  ./run.sh compare --N 4096 --steps 200 --dt 1e-3 --eps 1e-3 --method yoshida4 --Bj 512 --threads 4 --kernel fused
   ./run.sh autosweep --N 4096 --list 256,320,384,448,512,576,640,704,768,896
   ./run.sh sweep --N 4096 --steps 200 --kernel fused --out sweep_bj_200.csv
   ./run.sh heatmap --Ns 1024,2048,4096,8192 --out bjN_heatmap.csv
@@ -41,19 +44,23 @@ USAGE
 }
 
 build() {
-  local clean=0 cxx=${CXX:-clang++} use_lld=1
+  local clean=0 cxx=${CXX:-clang++} use_lld=1 opt=${OPT:-} dir=${DIR:-$BUILD_DIR}
   while [[ $# -gt 0 ]]; do
     case $1 in
       --clean) clean=1; shift ;;
       --cc) cxx=$2; shift 2 ;;
       --no-lld) use_lld=0; shift ;;
+      --opt) opt=$2; shift 2 ;;
+      --dir) dir=$2; shift 2 ;;
       *) echo "[build] unknown option: $1"; usage; exit 2 ;;
     esac
   done
-  [[ $clean -eq 1 ]] && rm -rf build
+  [[ $clean -eq 1 ]] && rm -rf "$dir"
   local ldflags=""; [[ $use_lld -eq 1 ]] && ldflags="-DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld"
-  cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$cxx" $ldflags
-  cmake --build build -j
+  local optflag=""; [[ -n "$opt" ]] && optflag="-DNBODY_OPT_PRESET=$opt"
+  cmake -S . -B "$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$cxx" $ldflags $optflag
+  cmake --build "$dir" -j
+  BUILD_DIR="$dir"; BIN="./$dir/nbody"
 }
 
 ensure_build() {
@@ -75,7 +82,7 @@ run_cmd() {
   local fpp=32 bpp=8 peak_gflops="" mem_gbs=""
   local pass_args=()
   if [[ $# -eq 0 ]]; then
-    pass_args+=(--N 4096 --steps 200 --dt 1e-3 --eps 1e-3 --method yoshida4 --Bj 512 --threads 4 --kernel fused --check 1)
+    pass_args+=(--N 4096 --steps 200 --dt 1e-3 --eps 1e-3 --method yoshida4 --Bj 512 --threads 4 --kernel fused --mode vector --check 1)
   else
     while [[ $# -gt 0 ]]; do
       case $1 in
@@ -87,6 +94,16 @@ run_cmd() {
       esac
     done
   fi
+
+  # Normalize common hyphenated/alias flags
+  for i in "${!pass_args[@]}"; do
+    case "${pass_args[$i]}" in
+      --plot-every) pass_args[$i]=--plot_every ;;
+      --plot-limit) pass_args[$i]=--plot_limit ;;
+      --plot-axes)  pass_args[$i]=--plot_axes  ;;
+      --bj)         pass_args[$i]=--Bj         ;;
+    esac
+  done
 
   # Run and capture output
   local out
@@ -144,6 +161,16 @@ selftest() {
 autosweep() {
   ensure_build
   local N=${N:-4096} dt=${DT:-1e-3} eps=${EPS:-1e-3} threads=${THREADS:-$OMP_NUM_THREADS} list=${LIST:-256,320,384,448,512,576,640,704,768,896}
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --N) N=$2; shift 2 ;;
+      --dt) dt=$2; shift 2 ;;
+      --eps) eps=$2; shift 2 ;;
+      --threads) threads=$2; shift 2 ;;
+      --list) list=$2; shift 2 ;;
+      *) shift ;;
+    esac
+  done
   "$BIN" --N "$N" --steps 1 --dt "$dt" --eps "$eps" \
           --method yoshida4 --Bj 512 --threads "$threads" \
           --autosweep "$list" --kernel fused
@@ -153,9 +180,30 @@ sweep() {
   ensure_build
   local N=${N:-4096} steps=${STEPS:-200} dt=${DT:-1e-3} eps=${EPS:-1e-3} threads=${THREADS:-$OMP_NUM_THREADS}
   local kernel=${KERNEL:-fused}
+  local mode=${MODE:-vector}
   local cmin=${COARSE_MIN:-128} cmax=${COARSE_MAX:-2048} cstep=${COARSE_STEP:-128}
   local fr=${FINE_RADIUS:-256} fstep=${FINE_STEP:-16}
   local out=${OUT:-sweep_bj_200.csv}
+
+  # Parse CLI overrides
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --N) N=$2; shift 2 ;;
+      --steps) steps=$2; shift 2 ;;
+      --dt) dt=$2; shift 2 ;;
+      --eps) eps=$2; shift 2 ;;
+      --threads) threads=$2; shift 2 ;;
+      --kernel) kernel=$2; shift 2 ;;
+      --mode) mode=$2; shift 2 ;;
+      --coarse-min) cmin=$2; shift 2 ;;
+      --coarse-max) cmax=$2; shift 2 ;;
+      --coarse-step) cstep=$2; shift 2 ;;
+      --fine-radius) fr=$2; shift 2 ;;
+      --fine-step) fstep=$2; shift 2 ;;
+      --out) out=$2; shift 2 ;;
+      *) shift ;;
+    esac
+  done
 
   export OMP_NUM_THREADS="$threads"
   echo "# N=$N steps=$steps dt=$dt eps=$eps threads=$threads kernel=$kernel" | tee "$out"
@@ -165,7 +213,7 @@ sweep() {
     local BJ="$1" out pps
     out=$("$BIN" --N "$N" --steps "$steps" --dt "$dt" --eps "$eps" \
                   --method yoshida4 --Bj "$BJ" --threads "$threads" \
-                  --kernel "$kernel" --check 0 2>&1)
+                  --kernel "$kernel" --mode "$mode" --check 0 2>&1)
     pps=$(printf "%s\n" "$out" | awk -F 'Pairs/s = ' '/Pairs\/s/ {split($2,a," "); print a[1]}' | tail -n1)
     [[ -z "$pps" ]] && { echo "ERROR: failed at Bj=$BJ"; exit 1; }
     echo "$BJ $pps"
@@ -193,6 +241,11 @@ sweep() {
   echo "# BEST Bj=$best_bj  Pairs/s=$best_pps" | tee -a "$out"
 }
 
+# Convenience wrapper to sweep Bj for scalar_tiled
+sweep_scalar_tiled() {
+  MODE=scalar_tiled sweep "$@"
+}
+
 heatmap() {
   ensure_build
   local Ns_csv=${NS:-${NSs:-"1024,2048,4096,8192"}}
@@ -200,6 +253,22 @@ heatmap() {
   local steps=${STEPS:-200} dt=${DT:-1e-3} eps=${EPS:-1e-3}
   local threads=${THREADS:-1} kernel=${KERNEL:-fused}
   local out=${OUT:-bjN_heatmap.csv}
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --Ns|--ns) Ns_csv=$2; shift 2 ;;
+      --bj-min) bj_min=$2; shift 2 ;;
+      --bj-max) bj_max=$2; shift 2 ;;
+      --bj-step) bj_step=$2; shift 2 ;;
+      --steps) steps=$2; shift 2 ;;
+      --dt) dt=$2; shift 2 ;;
+      --eps) eps=$2; shift 2 ;;
+      --threads) threads=$2; shift 2 ;;
+      --kernel) kernel=$2; shift 2 ;;
+      --out) out=$2; shift 2 ;;
+      *) shift ;;
+    esac
+  done
 
   IFS=',' read -r -a Ns <<< "$Ns_csv"
   {
@@ -221,16 +290,99 @@ live() {
   if ! command -v gnuplot >/dev/null 2>&1; then
     echo "[warn] gnuplot not found. Install with: sudo apt install -y gnuplot" >&2
   fi
-  local N=${N:-2048} steps=${STEPS:-2000} dt=${DT:-1e-3} eps=${EPS:-1e-3}
-  local method=${METHOD:-yoshida4} Bj=${BJ:-512} threads=${THREADS:-$OMP_NUM_THREADS}
-  local kernel=${KERNEL:-fused}
-  local plot_every=${PLOT_EVERY:-20} plot_limit=${PLOT_LIMIT:-4096} plot_axes=${PLOT_AXES:-xy}
+  local args=()
+  if [[ $# -eq 0 ]]; then
+    # sensible defaults for interactive live plotting
+    args=(--N 2048 --steps 2000 --dt 1e-3 --eps 1e-3 \
+          --method yoshida4 --Bj 512 --threads "${THREADS:-$OMP_NUM_THREADS}" --kernel fused \
+          --plot live --plot_every 20 --plot_limit 4096 --plot_axes xy)
+  else
+    while [[ $# -gt 0 ]]; do args+=("$1"); shift; done
+    # add --plot live if not specified
+    local has_plot=0
+    for a in "${args[@]}"; do [[ "$a" == "--plot" ]] && has_plot=1; done
+    if [[ $has_plot -eq 0 ]]; then args+=(--plot live); fi
+    # normalize common hyphenated aliases to program's underscore options
+    for i in "${!args[@]}"; do
+      case "${args[$i]}" in
+        --plot-every) args[$i]=--plot_every ;;
+        --plot-limit) args[$i]=--plot_limit ;;
+        --plot-axes)  args[$i]=--plot_axes  ;;
+      esac
+    done
+  fi
+  echo -n "[live] launching: $BIN"; printf ' %q' "${args[@]}"; echo
+  "$BIN" "${args[@]}"
+}
 
-  export OMP_NUM_THREADS="$threads"
-  echo "[live] N=$N steps=$steps dt=$dt eps=$eps Bj=$Bj threads=$threads kernel=$kernel plot=$plot_axes/$plot_every limit=$plot_limit"
-  "$BIN" --N "$N" --steps "$steps" --dt "$dt" --eps "$eps" \
-         --method "$method" --Bj "$Bj" --threads "$threads" --kernel "$kernel" \
-         --plot live --plot_every "$plot_every" --plot_limit "$plot_limit" --plot_axes "$plot_axes"
+compare() {
+  ensure_build
+  local args=("$@")
+  # Normalize aliases
+  for i in "${!args[@]}"; do
+    case "${args[$i]}" in
+      --plot-every) args[$i]=--plot_every ;;
+      --plot-limit) args[$i]=--plot_limit ;;
+      --plot-axes)  args[$i]=--plot_axes  ;;
+      --bj)         args[$i]=--Bj         ;;
+    esac
+  done
+  # Run vector
+  local out_vec out_sca pps_vec pps_sca
+  out_vec=$("$BIN" "${args[@]}" --mode vector 2>&1)
+  pps_vec=$(echo "$out_vec" | awk -F 'Pairs/s = ' '/Pairs\/s/{split($2,a," "); print a[1]}' | tail -n1)
+  # Run scalar
+  out_sca=$("$BIN" "${args[@]}" --mode scalar 2>&1)
+  pps_sca=$(echo "$out_sca" | awk -F 'Pairs/s = ' '/Pairs\/s/{split($2,a," "); print a[1]}' | tail -n1)
+  echo "[compare] vector pairs/s: $pps_vec"
+  echo "[compare] scalar pairs/s: $pps_sca"
+  if [[ -n "$pps_vec" && -n "$pps_sca" ]]; then
+    awk -v v="$pps_vec" -v s="$pps_sca" 'BEGIN{ if (s>0) printf("[compare] speedup vector/scalar = %.2fx\n", v/s); else print "[compare] speedup: N/A" }'
+  fi
+}
+
+compare_opt() {
+  # build and run weak vs strong in separate dirs
+  local args=()
+  while [[ $# -gt 0 ]]; do args+=("$1"); shift; done
+  # weak
+  cmake -S . -B build-weak -G Ninja -DCMAKE_BUILD_TYPE=Release -DNBODY_OPT_PRESET=weak >/dev/null
+  cmake --build build-weak -j >/dev/null
+  local out_w=$(./build-weak/nbody "${args[@]}" 2>&1)
+  local pps_w=$(echo "$out_w" | awk -F 'Pairs/s = ' '/Pairs\/s/{split($2,a," "); print a[1]}' | tail -n1)
+  # strong
+  cmake -S . -B build-strong -G Ninja -DCMAKE_BUILD_TYPE=Release -DNBODY_OPT_PRESET=strong >/dev/null
+  cmake --build build-strong -j >/dev/null
+  local out_s=$(./build-strong/nbody "${args[@]}" 2>&1)
+  local pps_s=$(echo "$out_s" | awk -F 'Pairs/s = ' '/Pairs\/s/{split($2,a," "); print a[1]}' | tail -n1)
+  echo "[compare_opt] weak pairs/s:   $pps_w"
+  echo "[compare_opt] strong pairs/s: $pps_s"
+  if [[ -n "$pps_w" && -n "$pps_s" ]]; then
+    awk -v s="$pps_s" -v w="$pps_w" 'BEGIN{ if (w>0) printf("[compare_opt] speedup strong/weak = %.2fx\n", s/w); else print "[compare_opt] speedup: N/A" }'
+  fi
+}
+
+compare_scalar() {
+  ensure_build
+  local args=("$@")
+  for i in "${!args[@]}"; do
+    case "${args[$i]}" in
+      --plot-every) args[$i]=--plot_every ;;
+      --plot-limit) args[$i]=--plot_limit ;;
+      --plot-axes)  args[$i]=--plot_axes  ;;
+      --bj)         args[$i]=--Bj         ;;
+    esac
+  done
+  local out_na out_tl pps_na pps_tl
+  out_na=$("$BIN" "${args[@]}" --mode scalar 2>&1)
+  pps_na=$(echo "$out_na" | awk -F 'Pairs/s = ' '/Pairs\/s/{split($2,a," "); print a[1]}' | tail -n1)
+  out_tl=$("$BIN" "${args[@]}" --mode scalar_tiled 2>&1)
+  pps_tl=$(echo "$out_tl" | awk -F 'Pairs/s = ' '/Pairs\/s/{split($2,a," "); print a[1]}' | tail -n1)
+  echo "[compare_scalar] scalar pairs/s:       $pps_na"
+  echo "[compare_scalar] scalar_tiled pairs/s: $pps_tl"
+  if [[ -n "$pps_na" && -n "$pps_tl" ]]; then
+    awk -v t="$pps_tl" -v n="$pps_na" 'BEGIN{ if (n>0) printf("[compare_scalar] speedup tiled/naive = %.2fx\n", t/n); else print "[compare_scalar] speedup: N/A" }'
+  fi
 }
 
 cmd=${1:-}
@@ -240,8 +392,12 @@ case "$cmd" in
   selftest) shift; selftest "$@" ;;
   autosweep) shift; autosweep "$@" ;;
   sweep) shift; sweep "$@" ;;
+  sweep_scalar_tiled) shift; sweep_scalar_tiled "$@" ;;
   heatmap) shift; heatmap "$@" ;;
   live) shift; live "$@" ;;
+  compare) shift; compare "$@" ;;
+  compare_scalar) shift; compare_scalar "$@" ;;
+  compare_opt) shift; compare_opt "$@" ;;
   ""|-h|--help|help) usage ;;
   *) echo "Unknown command: $cmd"; usage; exit 2 ;;
 esac

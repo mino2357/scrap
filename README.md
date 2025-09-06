@@ -2,6 +2,31 @@
 
 Numerical experiments for compressible flow and reactive transport.
 
+## nbody: High‑performance N‑Body (CPU/AVX2)
+
+Double‑precision N‑body integrator with AVX2/FMA kernels, Yoshida4/RK4/Verlet, OpenMP, j‑tiling, autosweep, and live plotting via gnuplot.
+
+- Full details live in `nbody/README.md`.
+
+Quick start (from repo root):
+
+- Build: `cd nbody && ./run.sh build --clean`
+- Normal run: `./run.sh run --N 4096 --steps 200 --dt 1e-3 --eps 1e-3 --method yoshida4 --Bj 512 --threads 4 --kernel fused`
+- Live plot: `./run.sh live --N 2048 --steps 2000 --dt 1e-3 --eps 1e-3 --Bj 512 --plot-every 20 --plot-axes xy`
+- Compare kernels:
+  - Vector vs scalar: `./run.sh compare --N 4096 --steps 200 --dt 1e-3 --eps 1e-3 --Bj 512 --threads 4 --kernel fused`
+  - Scalar vs scalar_tiled: `./run.sh compare_scalar --N 4096 --steps 50 --dt 1e-3 --eps 1e-3 --Bj 1024 --threads 4 --kernel fused`
+- Compiler presets (weak vs strong): `./run.sh compare_opt --N 4096 --steps 200 --dt 1e-3 --eps 1e-3 --Bj 512 --threads 4 --kernel fused`
+- Auto‑sweep Bj (scalar_tiled): `./run.sh sweep_scalar_tiled --N 4096 --steps 200 --kernel fused --threads 4 --coarse-min 128 --coarse-max 3072 --coarse-step 128 --fine-radius 256 --fine-step 16 --out sweep_scalar_tiled_4096.csv`
+
+Reading the summary (run.sh run):
+- pairs/s = N^2 × steps / elapsed
+- GFLOP/s = pairs/s × fpp / 1e9 (default fpp=32)
+- GB/s = pairs/s × bytes_per_pair / 1e9 (vector≈8, scalar≈32)
+- Arithmetic intensity AI = fpp / bytes_per_pair. See Roofline notes in `nbody/README.md`.
+
+Notes (Windows/WSL2): Foreground apps (e.g. Chrome) can steal budget on low‑power SoCs, reducing pairs/s. Use High‑performance power plan, avoid Efficiency mode on `vmmem`, keep one core free (e.g., threads=Ncores‑1), and prefer static foreground pages during benchmarks. Details in `nbody/README.md`.
+
 ## euler1d_sod: 1‑D Euler equations
 
 $\rho$ is density, $u$ velocity, $e$ total energy density and $p$ pressure.

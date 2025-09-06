@@ -46,22 +46,24 @@ struct Plotter {
     double ax0=amin-pad*da, ax1=amax+pad*da;
     double by0=bmin-pad*db, by1=bmax+pad*db;
     fprintf(gp, "set title 'N-body (step=%d, t=%.6g)'\n", step, t);
-    fprintf(gp, "set xrange [%.15g:%.15g]\n", ax0, ax1);
-    fprintf(gp, "set yrange [%.15g:%.15g]\n", by0, by1);
-    fprintf(gp, "plot '-' with points pt 7 ps 0.3 notitle\n");
+    fprintf(gp, "set xrange [-2:2]\n");
+    fprintf(gp, "set yrange [-2:2]\n");
+    fprintf(gp, "plot '-' with points pt 7 ps 0.1 notitle\n");
     for (std::size_t i=0;i<M;++i) fprintf(gp, "%.15g %.15g\n", a[i], b[i]);
     fprintf(gp, "e\n"); fflush(gp);
   }
 };
 
 extern "C" bool* __get_kernel_flag(); // from integrators.cpp
+extern "C" int* __get_vector_mode();  // from force_kernel_avx2.cpp
+extern "C" int* __get_scalar_tiled(); // from force_kernel_avx2.cpp
 
 static void usage(){
   std::puts("Usage: ./nbody --N <int> --steps <int> --dt <float> --eps <float> "
             "--method {yoshida4|rk4|verlet} --Bj <int> --threads <int> "
             "[--seed <uint64>] [--check 0|1] [--selftest] "
             "[--plot live|none] [--plot_every k] [--plot_limit m] [--plot_axes xy|xz|yz] "
-            "[--kernel fused|two_pass] [--autosweep CSV]");
+            "[--kernel fused|two_pass] [--mode vector|scalar|scalar_tiled] [--autosweep CSV]");
 }
 
 static void init_random(Arrays& S, uint64_t seed){
@@ -70,9 +72,9 @@ static void init_random(Arrays& S, uint64_t seed){
     S.x[i]=rng.uniform(-1.0,1.0);
     S.y[i]=rng.uniform(-1.0,1.0);
     S.z[i]=rng.uniform(-1.0,1.0);
-    S.vx[i]=rng.uniform(-0.1,0.1);
-    S.vy[i]=rng.uniform(-0.1,0.1);
-    S.vz[i]=rng.uniform(-0.1,0.1);
+    S.vx[i]=0.0; //rng.uniform(-0.1,0.1);
+    S.vy[i]=0.0; //rng.uniform(-0.1,0.1);
+    S.vz[i]=0.0; //rng.uniform(-0.1,0.1);
     S.m[i]=1.0/S.N;
   }
 }
@@ -110,6 +112,7 @@ int main(int argc, char** argv){
   std::size_t plot_limit=4096;
   std::string plot_axes="xy";
   std::string kernel="fused";
+  std::string mode="vector"; // vector | scalar | scalar_tiled
   std::string autosweep="";
 
   for (int i=1;i<argc;i++){
@@ -129,6 +132,7 @@ int main(int argc, char** argv){
     else if (eq("--plot_limit") && i+1<argc) plot_limit = std::strtoull(argv[++i],nullptr,10);
     else if (eq("--plot_axes") && i+1<argc) plot_axes = argv[++i];
     else if (eq("--kernel") && i+1<argc) kernel = argv[++i];
+    else if (eq("--mode") && i+1<argc) mode = argv[++i];
     else if (eq("--autosweep") && i+1<argc) autosweep = argv[++i];
     else { usage(); return 0; }
   }
@@ -165,6 +169,17 @@ int main(int argc, char** argv){
 
   // Kernel mode flag
   *(__get_kernel_flag()) = (kernel!="two_pass");
+  // Vectorization/scalar mode flags
+  if (mode=="vector"){
+    *(__get_vector_mode()) = 1;
+    *(__get_scalar_tiled()) = 0;
+  } else if (mode=="scalar_tiled"){
+    *(__get_vector_mode()) = 0;
+    *(__get_scalar_tiled()) = 1;
+  } else { // scalar
+    *(__get_vector_mode()) = 0;
+    *(__get_scalar_tiled()) = 0;
+  }
   std::printf("[INFO] kernel=%s  Bj=%zu  threads=%d\n", kernel.c_str(), Bj, threads);
 
   // Helper for quick bench (used by autosweep)
