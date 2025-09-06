@@ -47,3 +47,19 @@ settings.json
 target/
 **/*.rs.bk
 Cargo.lock
+
+# CMake / Ninja build artifacts (global)
+**/build/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/install_manifest.txt
+**/Makefile
+**/compile_commands.json
+**/build.ninja
+**/.ninja_log
+**/.ninja_deps
+cmake-build-*/
+
+# Project-specific: nbody (formerly test)
+nbody/build/
