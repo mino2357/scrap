@@ -132,9 +132,10 @@ void compute_accel_dp_avx2(const double* x, const double* y, const double* z, co
     // i を4要素ずつ処理（__m256d は double×4）
     #pragma omp parallel for schedule(static)
     for (ptrdiff_t ib=0; ib<Ivec; ib+=4){
-        __m256d xi = _mm256_load_pd(x+ib);
-        __m256d yi = _mm256_load_pd(y+ib);
-        __m256d zi = _mm256_load_pd(z+ib);
+        // 入力は std::vector 由来の一時領域もあり得るため、ロードは非整列版を使用
+        __m256d xi = _mm256_loadu_pd(x+ib);
+        __m256d yi = _mm256_loadu_pd(y+ib);
+        __m256d zi = _mm256_loadu_pd(z+ib);
         __m256d axi = _mm256_setzero_pd();
         __m256d ayi = _mm256_setzero_pd();
         __m256d azi = _mm256_setzero_pd();
@@ -243,9 +244,10 @@ void compute_accel_dp_avx2(const double* x, const double* y, const double* z, co
                 azi = _mm256_fmadd_pd(a, rz, azi);
             }
         }
-        _mm256_store_pd(ax+ib, axi);
-        _mm256_store_pd(ay+ib, ayi);
-        _mm256_store_pd(az+ib, azi);
+        // 出力は整列していることが多いが、安全のため非整列ストア
+        _mm256_storeu_pd(ax+ib, axi);
+        _mm256_storeu_pd(ay+ib, ayi);
+        _mm256_storeu_pd(az+ib, azi);
     }
 
     for (std::size_t i=Ivec; i<N; ++i){

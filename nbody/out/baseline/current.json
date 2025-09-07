@@ -1,0 +1,152 @@
+{
+  "fused_rk4": {
+    "id": "fused_rk4",
+    "kernel": "fused",
+    "method": "rk4",
+    "metrics": {
+      "H0": -0.451126061973939,
+      "H_end": -0.451126208333777,
+      "L0": 0.00437923488354119,
+      "L_end": 0.00437923488876124,
+      "max_rel_dE": 1.57028528013914e-07,
+      "max_rel_dL": 1.08868890476643e-11
+    },
+    "params": {
+      "Bj": 512,
+      "N": 100,
+      "check_every": 200,
+      "dt": 0.0005,
+      "eps": 0.01,
+      "mode": "scalar",
+      "rand_vel": 0.05,
+      "seed": 1337,
+      "steps": 4000,
+      "threads": 1
+    }
+  },
+  "fused_verlet": {
+    "id": "fused_verlet",
+    "kernel": "fused",
+    "method": "verlet",
+    "metrics": {
+      "H0": -0.451126061981057,
+      "H_end": -0.451123856870505,
+      "L0": 0.00437923488354119,
+      "L_end": 0.00437923488354158,
+      "max_rel_dE": 9.4225350287247e-06,
+      "max_rel_dL": 1.97005428845651e-15
+    },
+    "params": {
+      "Bj": 512,
+      "N": 100,
+      "check_every": 200,
+      "dt": 0.0005,
+      "eps": 0.01,
+      "mode": "scalar",
+      "rand_vel": 0.05,
+      "seed": 1337,
+      "steps": 4000,
+      "threads": 1
+    }
+  },
+  "fused_yoshida4": {
+    "id": "fused_yoshida4",
+    "kernel": "fused",
+    "method": "yoshida4",
+    "metrics": {
+      "H0": -0.451126182399702,
+      "H_end": -0.449701079784358,
+      "L0": 0.0043792348835412,
+      "L_end": 0.00437923488354086,
+      "max_rel_dE": 0.00394183091551231,
+      "max_rel_dL": 1.81509892974988e-15
+    },
+    "params": {
+      "Bj": 512,
+      "N": 100,
+      "check_every": 200,
+      "dt": 0.0005,
+      "eps": 0.01,
+      "mode": "scalar",
+      "rand_vel": 0.05,
+      "seed": 1337,
+      "steps": 4000,
+      "threads": 1
+    }
+  },
+  "two_pass_rk4": {
+    "id": "two_pass_rk4",
+    "kernel": "two_pass",
+    "method": "rk4",
+    "metrics": {
+      "H0": -0.451126061973939,
+      "H_end": -0.451126208333777,
+      "L0": 0.00437923488354119,
+      "L_end": 0.00437923488876124,
+      "max_rel_dE": 1.57028528013914e-07,
+      "max_rel_dL": 1.08868890476643e-11
+    },
+    "params": {
+      "Bj": 512,
+      "N": 100,
+      "check_every": 200,
+      "dt": 0.0005,
+      "eps": 0.01,
+      "mode": "scalar",
+      "rand_vel": 0.05,
+      "seed": 1337,
+      "steps": 4000,
+      "threads": 1
+    }
+  },
+  "two_pass_verlet": {
+    "id": "two_pass_verlet",
+    "kernel": "two_pass",
+    "method": "verlet",
+    "metrics": {
+      "H0": -0.451126061981057,
+      "H_end": -0.45112385687052,
+      "L0": 0.00437923488354119,
+      "L_end": 0.00437923488354141,
+      "max_rel_dE": 9.42253502339563e-06,
+      "max_rel_dL": 3.41194272198614e-16
+    },
+    "params": {
+      "Bj": 512,
+      "N": 100,
+      "check_every": 200,
+      "dt": 0.0005,
+      "eps": 0.01,
+      "mode": "scalar",
+      "rand_vel": 0.05,
+      "seed": 1337,
+      "steps": 4000,
+      "threads": 1
+    }
+  },
+  "two_pass_yoshida4": {
+    "id": "two_pass_yoshida4",
+    "kernel": "two_pass",
+    "method": "yoshida4",
+    "metrics": {
+      "H0": -0.451126182399702,
+      "H_end": -0.449701079784299,
+      "L0": 0.0043792348835412,
+      "L_end": 0.00437923488354102,
+      "max_rel_dE": 0.00394183091543948,
+      "max_rel_dL": 3.37572923461027e-16
+    },
+    "params": {
+      "Bj": 512,
+      "N": 100,
+      "check_every": 200,
+      "dt": 0.0005,
+      "eps": 0.01,
+      "mode": "scalar",
+      "rand_vel": 0.05,
+      "seed": 1337,
+      "steps": 4000,
+      "threads": 1
+    }
+  }
+}

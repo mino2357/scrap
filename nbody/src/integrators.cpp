@@ -82,11 +82,12 @@ void step_yoshida4(double dt, Arrays& S, double eps2, std::size_t Bj){
 
 void step_rk4(double dt, Arrays& S, double eps2, std::size_t Bj){
   const std::size_t N = S.N;
-  // thread_local にワークを確保し、繰り返し呼び出し時の再確保を避ける
-  static thread_local std::vector<double> k1x, k1y, k1z, k1vx, k1vy, k1vz;
-  static thread_local std::vector<double> k2x, k2y, k2z, k2vx, k2vy, k2vz;
-  static thread_local std::vector<double> k3x, k3y, k3z, k3vx, k3vy, k3vz;
-  static thread_local std::vector<double> k4x, k4y, k4z, k4vx, k4vy, k4vz;
+  // ワークを静的に確保し、繰り返し呼び出し時の再確保を避ける
+  // OpenMP 並列ループ内で同一ベクタの異なる添字を書き込むだけなので競合はありません。
+  static std::vector<double> k1x, k1y, k1z, k1vx, k1vy, k1vz;
+  static std::vector<double> k2x, k2y, k2z, k2vx, k2vy, k2vz;
+  static std::vector<double> k3x, k3y, k3z, k3vx, k3vy, k3vz;
+  static std::vector<double> k4x, k4y, k4z, k4vx, k4vy, k4vz;
 
   auto ensure = [&](auto& v){ if (v.size()!=N) v.assign(N,0.0); };
   ensure(k1x); ensure(k1y); ensure(k1z); ensure(k1vx); ensure(k1vy); ensure(k1vz);

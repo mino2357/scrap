@@ -153,6 +153,21 @@ COARSE_STEP=128 FINE_RADIUS=256 FINE_STEP=16 OUT=sweep_scalar_tiled_4096.csv \
 
 ---
 
+## Baseline (deterministic invariants check)
+
+For reproducible commit checks, a small deterministic suite runs 6 cases (3 integrators × 2 kernels) in scalar, single-thread mode with a fixed seed. Metrics recorded per case: `H0`, `H_end`, `L0`, `L_end`, `max_rel_dE`, `max_rel_dL`.
+
+- Run locally and update baseline:
+  - Build: `cmake -S nbody -B nbody/build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build nbody/build -j`
+  - Generate current and update: `python3 nbody/baseline/baseline.py run && python3 nbody/baseline/baseline.py update`
+  - The baseline is stored at `nbody/baseline/baseline.json`.
+
+- Check against baseline:
+  - `python3 nbody/baseline/baseline.py check`
+  - Fails if any metric deviates beyond tight tolerances (rtol≈1e-10, atol≈5e-13).
+
+GitHub Actions runs this check on each push/PR (`.github/workflows/nbody-baseline.yml`).
+
 ## Reading the throughput summary (formulas and rationale)
 
 When you run via `./run.sh run ...`, a summary like the following is printed:
