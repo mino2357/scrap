@@ -5,9 +5,30 @@
 #include <immintrin.h>
 #include <omp.h>
 
-static bool g_kernel_fused = true;
-extern "C" bool* __get_kernel_flag(){ return &g_kernel_fused; } // optional
+/*
+  時間積分カーネルの実装
+  ----------------------------------------
+  - drift: x += tau * v
+  - kick:  v += tau * a(x)
+    - g_kernel_fused=true の場合は、a を明示配列に書かず、AVX2 力カーネルで
+      その場で v に加算（メモリ帯域と一時配列を節約）。
+    - false の場合は、まず a を compute_accel_dp_avx2 で計算し、別パスで v に加算。
 
+  - step_yoshida4: 4 段 Yoshida（シンプレクティック, 4 次）。
+  - step_rk4:      古典 4 次 Runge-Kutta。中間段のためのワーク配列を保持。
+  - step_verlet:   Velocity-Verlet（シンプレクティック, 2 次）。
+
+  OpenMP による並列化
+  ----------------------------------------
+  - 配列更新は基本的に独立要素なので parallel for/schedule(static) を使用。
+  - 力計算は force_kernel_avx2 側でスレッド化されます。
+*/
+
+// v += tau*a(x) を「融合(kick_accumulate)」するか「二段(two-pass)」にするかのフラグ
+static bool g_kernel_fused = true;
+extern "C" bool* __get_kernel_flag(){ return &g_kernel_fused; } // optional（GUIなどからの切替用）
+
+// 位置の更新: x += tau * v
 static inline void drift(double* x,double* y,double* z,
                          const double* vx,const double* vy,const double* vz,
                          std::size_t N, double tau){
@@ -19,6 +40,9 @@ static inline void drift(double* x,double* y,double* z,
   }
 }
 
+// 速度の更新: v += tau * a(x)
+// - 融合版: kick_accumulate_dp_avx2 を呼び出して、a(x) を生成しつつ v に加算。
+// - 二段版: compute_accel_dp_avx2 で a を出してから、別ループで v に加算。
 static inline void kick(double* vx,double* vy,double* vz,
                         double* ax,double* ay,double* az,
                         const double* x,const double* y,const double* z,const double* m,
@@ -37,7 +61,7 @@ static inline void kick(double* vx,double* vy,double* vz,
   }
 }
 
-// Yoshida4 coefficients
+// Yoshida4（4 次シンプレクティック）係数
 static constexpr double c1 =  0.6756035959798289;
 static constexpr double c2 = -0.17560359597982877;
 static constexpr double c3 =  c2;
@@ -47,6 +71,7 @@ static constexpr double d2 = -1.7024143839193153;
 static constexpr double d3 =  d1;
 
 void step_yoshida4(double dt, Arrays& S, double eps2, std::size_t Bj){
+  // DKD... の並びで、kick と drift を交互に適用
   kick(S.vx,S.vy,S.vz, S.ax,S.ay,S.az, S.x,S.y,S.z,S.m, S.N, d1*dt, eps2, Bj);
   drift(S.x,S.y,S.z, S.vx,S.vy,S.vz, S.N, c1*dt);
   kick(S.vx,S.vy,S.vz, S.ax,S.ay,S.az, S.x,S.y,S.z,S.m, S.N, d2*dt, eps2, Bj);
@@ -57,6 +82,7 @@ void step_yoshida4(double dt, Arrays& S, double eps2, std::size_t Bj){
 
 void step_rk4(double dt, Arrays& S, double eps2, std::size_t Bj){
   const std::size_t N = S.N;
+  // thread_local にワークを確保し、繰り返し呼び出し時の再確保を避ける
   static thread_local std::vector<double> k1x, k1y, k1z, k1vx, k1vy, k1vz;
   static thread_local std::vector<double> k2x, k2y, k2z, k2vx, k2vy, k2vz;
   static thread_local std::vector<double> k3x, k3y, k3z, k3vx, k3vy, k3vz;
@@ -68,6 +94,7 @@ void step_rk4(double dt, Arrays& S, double eps2, std::size_t Bj){
   ensure(k3x); ensure(k3y); ensure(k3z); ensure(k3vx); ensure(k3vy); ensure(k3vz);
   ensure(k4x); ensure(k4y); ensure(k4z); ensure(k4vx); ensure(k4vy); ensure(k4vz);
 
+  // k1
   compute_accel_dp_avx2(S.x,S.y,S.z,S.m, S.ax,S.ay,S.az, N, eps2, Bj);
   #pragma omp parallel for schedule(static)
   for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
@@ -85,6 +112,7 @@ void step_rk4(double dt, Arrays& S, double eps2, std::size_t Bj){
     vy2[i]=S.vy[i]+0.5*dt*k1vy[i];
     vz2[i]=S.vz[i]+0.5*dt*k1vz[i];
   }
+  // k2
   compute_accel_dp_avx2(x2.data(),y2.data(),z2.data(),S.m, S.ax,S.ay,S.az, N, eps2, Bj);
   #pragma omp parallel for schedule(static)
   for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
@@ -102,6 +130,7 @@ void step_rk4(double dt, Arrays& S, double eps2, std::size_t Bj){
     vy3[i]=S.vy[i]+0.5*dt*k2vy[i];
     vz3[i]=S.vz[i]+0.5*dt*k2vz[i];
   }
+  // k3
   compute_accel_dp_avx2(x3.data(),y3.data(),z3.data(),S.m, S.ax,S.ay,S.az, N, eps2, Bj);
   #pragma omp parallel for schedule(static)
   for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
@@ -119,6 +148,7 @@ void step_rk4(double dt, Arrays& S, double eps2, std::size_t Bj){
     vy4[i]=S.vy[i]+dt*k3vy[i];
     vz4[i]=S.vz[i]+dt*k3vz[i];
   }
+  // k4
   compute_accel_dp_avx2(x4.data(),y4.data(),z4.data(),S.m, S.ax,S.ay,S.az, N, eps2, Bj);
   #pragma omp parallel for schedule(static)
   for (ptrdiff_t i=0;i<(ptrdiff_t)N;++i){
@@ -138,6 +168,7 @@ void step_rk4(double dt, Arrays& S, double eps2, std::size_t Bj){
 }
 
 void step_verlet(double dt, Arrays& S, double eps2, std::size_t Bj){
+  // half-kick → drift → half-kick の 2 次シンプレクティック法
   kick(S.vx,S.vy,S.vz, S.ax,S.ay,S.az, S.x,S.y,S.z,S.m, S.N, 0.5*dt, eps2, Bj);
   drift(S.x,S.y,S.z, S.vx,S.vy,S.vz, S.N, dt);
   kick(S.vx,S.vy,S.vz, S.ax,S.ay,S.az, S.x,S.y,S.z,S.m, S.N, 0.5*dt, eps2, Bj);

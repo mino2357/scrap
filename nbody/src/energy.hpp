@@ -3,6 +3,17 @@
 #include <cmath>
 #include <omp.h>
 
+/*
+  エネルギーと角運動量の計算ユーティリティ
+  ----------------------------------------
+  - 目的: 運動エネルギー T、ポテンシャルエネルギー V、角運動量 L を
+    スカラ実装で計算します（OpenMP による単純並列化）。
+  - データは SoA 配置（x[],y[],z[], vx[],vy[],vz[], m[]）。
+  - いずれの関数も入力配列の長さは N であることが前提です。
+  - 並列化: 各 for ループを OpenMP の reduction で合算。
+*/
+
+// 運動エネルギー T = Σ_i 1/2 m_i |v_i|^2
 inline double kinetic_energy(const double* vx, const double* vy, const double* vz,
                              const double* m, std::size_t N){
   double T = 0.0;
@@ -14,6 +25,9 @@ inline double kinetic_energy(const double* vx, const double* vy, const double* v
   return T;
 }
 
+// ポテンシャルエネルギー V = Σ_{i<j} - m_i m_j / sqrt(|r_j - r_i|^2 + eps2)
+// - 二重和の両側を数えないため、i<j のみを走査。
+// - O(N^2) の計算で、チェック用/統計用を想定。
 inline double potential_energy(const double* x, const double* y, const double* z,
                                const double* m, std::size_t N, double eps2){
   double V = 0.0;
@@ -33,6 +47,8 @@ inline double potential_energy(const double* x, const double* y, const double* z
   return V;
 }
 
+// 角運動量 L = Σ_i r_i × (m_i v_i)
+// - L は 3 要素配列 [Lx, Ly, Lz] に出力。
 inline void angular_momentum(const double* x,const double* y,const double* z,
                              const double* vx,const double* vy,const double* vz,
                              const double* m, std::size_t N, double L[3]){

@@ -1,3 +1,12 @@
+//
+// N-body ミニアプリ（AVX2 + OpenMP）
+// ----------------------------------------
+// - SoA 配列に粒子状態を格納し、力計算は AVX2/FMA ベクトル化カーネルを使用。
+// - 時間積分は Yoshida4 / RK4 / Verlet を選択可能。
+// - オプションでライブプロット（gnuplot）や Bj のパラメータスイープが可能。
+// - コマンドライン引数で N, steps, dt, eps, Bj, threads 等を指定。
+//   例: ./nbody --N 8192 --steps 1000 --dt 1e-3 --eps 1e-3 --method yoshida4 --Bj 512
+//
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -12,6 +21,8 @@
 #include "energy.hpp"
 
 // --- Simple live plotting via gnuplot (optional) ---
+// 軽量なプロッタ。粒子数を上限で間引き、ステップごとに座標を散布図で描画。
+// 注意: popen/gnuplot 依存のため、環境によっては使用不可の場合があります。
 #include <cstdio>
 struct Plotter {
   FILE* gp = nullptr;
@@ -46,6 +57,7 @@ struct Plotter {
     double ax0=amin-pad*da, ax1=amax+pad*da;
     double by0=bmin-pad*db, by1=bmax+pad*db;
     fprintf(gp, "set title 'N-body (step=%d, t=%.6g)'\n", step, t);
+    // TODO: 自動スケーリングを使うなら ax0/ax1, by0/by1 を xrange/yrange に反映
     fprintf(gp, "set xrange [-2:2]\n");
     fprintf(gp, "set yrange [-2:2]\n");
     fprintf(gp, "plot '-' with points pt 7 ps 0.1 notitle\n");
@@ -72,6 +84,7 @@ static void init_random(Arrays& S, uint64_t seed){
     S.x[i]=rng.uniform(-1.0,1.0);
     S.y[i]=rng.uniform(-1.0,1.0);
     S.z[i]=rng.uniform(-1.0,1.0);
+    // 初期速度は 0。ランダムにしたい場合は下のコメントアウトを有効化
     S.vx[i]=0.0; //rng.uniform(-0.1,0.1);
     S.vy[i]=0.0; //rng.uniform(-0.1,0.1);
     S.vz[i]=0.0; //rng.uniform(-0.1,0.1);
@@ -197,7 +210,7 @@ int main(int argc, char** argv){
 
   // Selftest or autosweep or normal run
   if (!autosweep.empty()){
-    // parse CSV list
+    // parse CSV list （例: "128,256,512,1024"）→ Bj 候補として順にベンチ
     std::vector<int> list; int cur=0; bool in=false; bool neg=false;
     for (char c: autosweep){
       if (c=='-' && !in){ in=true; neg=true; cur=0; }
@@ -228,6 +241,7 @@ int main(int argc, char** argv){
   }
 
   if (selftest){
+    // 2 体問題の保存量（エネルギー・角運動量）を確認
     S.N = N = 2;
     init_two_body(S);
     double eps2 = eps*eps;
@@ -273,6 +287,7 @@ int main(int argc, char** argv){
     double sec = tim.toc();
     double pairs = pairs_per_step * steps;
     double pairs_per_sec = pairs / sec;
+    // 粗い換算: 1 ペアあたり ~32 FLOPs と仮定して GFLOP/s を見積り
     double gflops = (pairs_per_sec * 32.0) / 1e9;
     std::printf("Done: N=%zu steps=%d dt=%.3g eps=%.3g method=%s\n", S.N, steps, dt, eps, method.c_str());
     std::printf("Time = %.3fs  Pairs/s = %.3e  ~GFLOP/s ≈ %.2f (rough)\n", sec, pairs_per_sec, gflops);
